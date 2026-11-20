@@ -1,7 +1,7 @@
 'use client';
 
 import { THAI_MONTHS, parseIsoDate, toBuddhistYear } from '@csis/shared';
-import { COLLEGE, DirectorOrder, Fill, Opinion, Paren, RequestNo, Row, Text, fullNameOf, nameOnly, step, str, type SheetProps } from '../blocks';
+import { COLLEGE, DirectorOrder, Fill, Opinion, Paren, RequestNo, Row, Text, fullNameOf, nameOnly, step, str, type SheetProps, SignFill } from '../blocks';
 import type { ApprovalRecord } from '@csis/shared';
 
 /** ช่องความเห็นแบบติ๊ก ( ) ครบ / ( ) ไม่ครบ เนื่องจาก... ของแบบคำร้องขอจบ */
@@ -20,7 +20,7 @@ function Checked({ x, y, title, ok, not, a, holder }: { x: number; y: number; ti
 }
 
 /** แบบคำร้องขอจบการศึกษา (สแกน p09) */
-export function GraduateSheet({ student: s, data: d, requestNo, approvals, officials = {} }: SheetProps) {
+export function GraduateSheet({ student: s, data: d, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const birth = parseIsoDate(s.birthDate);
   const reg = a('registrar');
@@ -49,7 +49,7 @@ export function GraduateSheet({ student: s, data: d, requestNo, approvals, offic
       <Text x={27} y={94}>จึงขออนุมัติสำเร็จการศึกษาจาก{COLLEGE}</Text>
       <Text x={38.5} y={102}>จึงเรียนมาเพื่อโปรดทราบ</Text>
       <Text x={137} y={111}>ขอแสดงความนับถือ</Text>
-      <Row y={124} x={121} right={null}><span>ลงชื่อ</span><Fill w={42}>{''}</Fill><span>นักศึกษา</span></Row>
+      <Row y={124} x={121} right={null}><span>ลงชื่อ</span><SignFill w={42} src={studentSignature} /><span>นักศึกษา</span></Row>
       <Row y={131} x={125} right={null}><span>(</span><Fill w={42}>{fullNameOf(s)}</Fill><span>)</span></Row>
 
       <Opinion x={29.5} y={139} w={60} title="1.  ความเห็นครูที่ปรึกษา" a={a('advisor')} holder={s.advisorName} lines={0} date={false} signLabel="(ลงชื่อ)" gap={7} />

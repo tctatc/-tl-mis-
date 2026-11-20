@@ -2,7 +2,7 @@
 
 import type { CourseRow } from '@csis/shared';
 import { Box } from '../parts';
-import { COLLEGE, Fill, RequestNo, Row, Text, WrittenAt, fullNameOf, slashDate, step, str, type SheetProps } from '../blocks';
+import { COLLEGE, Fill, RequestNo, Row, Text, WrittenAt, fullNameOf, slashDate, step, str, type SheetProps, SignFill } from '../blocks';
 import type { ApprovalRecord } from '@csis/shared';
 
 const tick = (on: boolean) => <Box checked={on} />;
@@ -40,7 +40,7 @@ function TransferBox({ x, y, title, a, holder, checks = true }: { x: number; y: 
 }
 
 /** แบบคำร้องขอเทียบโอนผลการเรียนรายวิชา/กลุ่มวิชา (ทอ.02, สแกน p02) */
-export function TransferSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {} }: SheetProps) {
+export function TransferSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const ev = (d.evidence as string[] | undefined) ?? [];
   return (
@@ -77,7 +77,7 @@ export function TransferSheet({ student: s, data: d, submittedAt, requestNo, app
       <Row y={128.3} x={85.3} right={60}><span className="flex items-center gap-[1.5mm]">{tick(ev.includes('other'))} อื่น ๆ</span><Fill grow left>{str(d.evidenceOther)}</Fill></Row>
 
       <Text x={43.5} y={136}>จึงเรียนมาเพื่อโปรดพิจารณา</Text>
-      <Row y={144.5} x={103} right={null}><span>ลงชื่อ</span><Fill w={52}>{''}</Fill></Row>
+      <Row y={144.5} x={103} right={null}><span>ลงชื่อ</span><SignFill w={52} src={studentSignature} /></Row>
       <Row y={150} x={109} right={null}><span>(</span><Fill w={50}>{fullNameOf(s)}</Fill><span>)</span></Row>
       <Text x={122} y={155.5}>ผู้ขอเทียบโอน</Text>
 
@@ -97,7 +97,7 @@ const td = 'border border-black px-[1.2mm] align-middle';
 const ROWS = 10;
 
 /** แบบสรุปรายวิชาที่ขอเทียบโอนผลการเรียน (ทอ.02-2, สแกน p03 — แนวนอน) */
-export function TransferListSheet({ student: s, data: d, approvals, officials = {} }: SheetProps) {
+export function TransferListSheet({ student: s, data: d, approvals, officials = {}, studentSignature }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const rows = ((d.courses as CourseRow[] | undefined) ?? []).slice(0, ROWS);
   const dir = a('director');
@@ -154,7 +154,7 @@ export function TransferListSheet({ student: s, data: d, approvals, officials = 
         </tbody>
       </table>
 
-      <Row y={150} x={200} right={null}><span>ลงชื่อ</span><Fill w={52}>{''}</Fill><span>ผู้ขอเทียบโอน</span></Row>
+      <Row y={150} x={200} right={null}><span>ลงชื่อ</span><SignFill w={52} src={studentSignature} /><span>ผู้ขอเทียบโอน</span></Row>
       <p className="absolute text-center" style={{ left: '206mm', width: '55mm', top: '151mm' }}>({fullNameOf(s)})</p>
       {signer(14, 166, 'หัวหน้าแผนกวิชา')}
       {signer(118, 166, 'หัวหน้างานวัดผลและประเมินผล', undefined, undefined, 82)}

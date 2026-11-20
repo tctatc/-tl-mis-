@@ -1,12 +1,12 @@
 'use client';
 
 import type { CourseRow } from '@csis/shared';
-import { COLLEGE, DirectorOrder, Fill, RequestNo, Row, Text, WrittenAt, fullNameOf, nameOnly, step, str, type SheetProps } from '../blocks';
+import { COLLEGE, DirectorOrder, Fill, RequestNo, Row, Text, WrittenAt, fullNameOf, nameOnly, step, str, type SheetProps, SignFill } from '../blocks';
 
 const cell = 'border border-black px-[1.5mm] align-middle';
 
 /** คำร้องขอคำอธิบายรายวิชา (สแกน p06) — มีตราวิทยาลัยหัวกระดาษ */
-export function CourseDescSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {} }: SheetProps) {
+export function CourseDescSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const rows = ((d.courses as CourseRow[] | undefined) ?? []).slice(0, 5);
   const cur = a('curriculum');
@@ -41,7 +41,7 @@ export function CourseDescSheet({ student: s, data: d, submittedAt, requestNo, a
 
       <Text x={51} y={153.5}>จึงเรียนมาเพื่อโปรดพิจารณา</Text>
       <Text x={0} w={210} y={161} center>ขอแสดงความนับถือ</Text>
-      <Row y={168.5} x={78} right={null}><span>ลงชื่อ</span><Fill w={52}>{''}</Fill><span>นักศึกษา</span></Row>
+      <Row y={168.5} x={78} right={null}><span>ลงชื่อ</span><SignFill w={52} src={studentSignature} /><span>นักศึกษา</span></Row>
       <Row y={175} x={84} right={null}><span>(</span><Fill w={52}>{fullNameOf(s)}</Fill><span>)</span></Row>
 
       <Text x={29} y={180.5}>ความเห็นงานพัฒนาหลักสูตรและการจัดการเรียนรู้</Text>

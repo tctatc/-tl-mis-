@@ -4,6 +4,8 @@ import {
   type GradedCourse, type GradesView, type PlanStatus, type ProfileView, type RegistrationCardView, type ScheduleView,
   type StudyPlanView, type SubjectRef, type TermRef,
 } from '@csis/shared';
+import type { AuthUser } from '../auth/decorators.js';
+import { AuditService } from '../common/audit.service.js';
 import { PrismaService } from '../common/prisma.service.js';
 
 type TermRow = { id: string; year: number; term: number; isCurrent: boolean };
@@ -14,7 +16,7 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 /** ข้อมูลการเรียนของนักศึกษาที่ล็อกอินอยู่ — ทุกเมธอดรับ studentId จากเซสชันเท่านั้น ไม่รับจาก query */
 @Injectable()
 export class StudentAcademicService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
   /** ภาคเรียนที่นักศึกษาคนนี้ลงทะเบียน (ใหม่ → เก่า) */
   private async myTerms(studentId: string): Promise<TermRef[]> {
@@ -209,5 +211,17 @@ export class StudentAcademicService {
       addresses: s.addresses.sort((a) => (a.kind === 'home' ? -1 : 1)).map((a) => ({ kind: a.kind, text: addr(a) })),
       guardians: s.guardians.map((g) => ({ relation: g.relation, name: g.name, occupation: g.occupation, phone: g.phone, isPrimary: g.isPrimary })),
     };
+  }
+
+  async signature(studentId: string) {
+    const s = await this.prisma.student.findUniqueOrThrow({ where: { id: studentId }, select: { signature: true, signatureUpdatedAt: true } });
+    return { signature: s.signature, updatedAt: s.signatureUpdatedAt?.toISOString() ?? null };
+  }
+
+  /** บันทึก/ลบลายเซ็น — คำร้องที่ยื่นไปแล้วใช้สำเนาของตัวเอง ไม่เปลี่ยนตาม */
+  async saveSignature(user: AuthUser, studentId: string, signature: string | null, ip: string) {
+    await this.prisma.student.update({ where: { id: studentId }, data: { signature, signatureUpdatedAt: signature ? new Date() : null } });
+    await this.audit.log({ actorUserId: user.id, action: signature ? 'signature.save' : 'signature.delete', entity: 'student', entityId: studentId, ip });
+    return { ok: true };
   }
 }

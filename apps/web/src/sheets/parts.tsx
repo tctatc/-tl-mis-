@@ -106,3 +106,17 @@ export function ScaledSheet({ children, className, maxHeight }: { children: Reac
     </div>
   );
 }
+
+/**
+ * ช่องลงชื่อของนักศึกษา: มีลายเซ็น → วางภาพลายเซ็นเหนือเส้นประ (ล้นขึ้นด้านบนได้เหมือนเซ็นจริง)
+ * ไม่มี → เส้นประว่างให้เซ็นด้วยปากกา
+ */
+export function SignFill({ w, src }: { w: number; src?: string | null | undefined }) {
+  return (
+    <span className="sheet-fill relative" style={{ width: `${w}mm`, overflow: 'visible' }}>
+      {'\u00a0'}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {src && <img src={src} alt="ลายเซ็นนักศึกษา" className="pointer-events-none absolute left-1/2 max-w-none -translate-x-1/2" style={{ bottom: '0.3mm', height: '10mm', maxWidth: `${w + 10}mm`, objectFit: 'contain' }} />}
+    </span>
+  );
+}

@@ -68,7 +68,7 @@ export class RequestsService {
 
   // ---------------- นักศึกษา ----------------
 
-  async create(user: AuthUser, input: { typeCode: string; data: unknown; idempotencyKey: string }, ip: string) {
+  async create(user: AuthUser, input: { typeCode: string; data: unknown; idempotencyKey: string; useSignature?: boolean }, ip: string) {
     if (!user.studentId) throw new ForbiddenException('ยื่นคำร้องได้เฉพาะบัญชีนักศึกษา');
     const type = getRequestType(input.typeCode);
     if (!type) throw new BadRequestException('ไม่พบประเภทคำร้องนี้');
@@ -89,6 +89,7 @@ export class RequestsService {
           throw new ForbiddenException('สถานภาพนักศึกษาไม่สามารถยื่นคำร้องออนไลน์ได้ กรุณาติดต่องานทะเบียน');
         }
         const snapshot = await loadStudentSnapshot(tx, student.id);
+        const studentSignature = input.useSignature ? this.savedSignature(student.signature) : null;
         const year = academicYearOf(new Date());
         const [{ last }] = await tx.$queryRaw<[{ last: number }]>`
           INSERT INTO request_counters (year, last) VALUES (${year}, 1)
@@ -103,11 +104,12 @@ export class RequestsService {
             submitterUserId: user.id,
             data: data as Prisma.InputJsonValue,
             studentSnapshot: snapshot as unknown as Prisma.InputJsonValue,
+            studentSignature,
             idempotencyKey: input.idempotencyKey,
             history: { create: { fromStatus: null, toStatus: 'pending', note: 'ยื่นคำร้อง', actorUserId: user.id, actorName: user.displayName } },
           },
         });
-        await this.audit.log({ actorUserId: user.id, action: 'request.create', entity: 'request', entityId: created.id, after: { typeCode: type.code, data }, ip }, tx);
+        await this.audit.log({ actorUserId: user.id, action: 'request.create', entity: 'request', entityId: created.id, after: { typeCode: type.code, data, signed: !!studentSignature }, ip }, tx);
         return { id: created.id, requestNo: created.requestNo };
       });
     } catch (error) {
@@ -126,7 +128,7 @@ export class RequestsService {
     return rows.map((r) => this.toSummary(r));
   }
 
-  async resubmit(user: AuthUser, id: string, dataRaw: unknown, ip: string) {
+  async resubmit(user: AuthUser, id: string, dataRaw: unknown, ip: string, useSignature?: boolean) {
     const row = await this.prisma.request.findUnique({ where: { id } });
     if (!row || row.submitterUserId !== user.id) throw new NotFoundException('ไม่พบคำร้อง');
     const data = await this.enrichCourses(parseFormData(row.template, dataRaw), row.studentId);
@@ -138,9 +140,12 @@ export class RequestsService {
     }
     await this.prisma.$transaction(async (tx) => {
       const snapshot = await loadStudentSnapshot(tx, row.studentId);
+      // ไม่ส่งตัวเลือกมา = คงลายเซ็นเดิมของใบนี้
+      const signature = useSignature === undefined ? undefined
+        : useSignature ? this.savedSignature((await tx.student.findUniqueOrThrow({ where: { id: row.studentId }, select: { signature: true } })).signature) : null;
       const updated = await tx.request.updateMany({
         where: { id, status: 'returned', round: row.round },
-        data: { ...next, data: data as Prisma.InputJsonValue, studentSnapshot: snapshot as unknown as Prisma.InputJsonValue },
+        data: { ...next, data: data as Prisma.InputJsonValue, studentSnapshot: snapshot as unknown as Prisma.InputJsonValue, ...(signature === undefined ? {} : { studentSignature: signature }) },
       });
       if (updated.count === 0) throw new ConflictException('คำร้องเปลี่ยนสถานะไปแล้ว กรุณารีเฟรชหน้า');
       await tx.requestStatusHistory.create({ data: { requestId: id, fromStatus: 'returned', toStatus: 'pending', note: 'แก้ไขแล้วส่งใหม่', actorUserId: user.id, actorName: user.displayName } });
@@ -184,6 +189,7 @@ export class RequestsService {
       ...this.toSummary(row),
       data: row.data,
       student: row.studentSnapshot as unknown as StudentSnapshot,
+      studentSignature: row.studentSignature,
       approvals: row.approvals.map((a): ApprovalRecord => ({
         id: a.id, round: a.round, stepIndex: a.stepIndex, stepKey: a.stepKey, decision: a.decision as Decision,
         comment: a.comment, actorName: a.actorName, actorTitle: a.actorTitle, decidedAt: a.decidedAt.toISOString(),
@@ -296,6 +302,12 @@ export class RequestsService {
     }
     if (or.length === 0) return { id: { in: [] } };
     return { status: 'pending', submitterUserId: { not: user.id }, OR: or };
+  }
+
+  /** ลายเซ็นที่บันทึกไว้ของนักศึกษา — เลือกใช้แต่ยังไม่เคยวาด = แจ้งให้วาดก่อน */
+  private savedSignature(signature: string | null): string {
+    if (!signature) throw new BadRequestException({ message: 'ยังไม่มีลายเซ็นที่บันทึกไว้ — วาดลายเซ็นก่อน หรือเลือกเว้นว่างไว้เซ็นบนกระดาษ', fields: { signature: 'วาดลายเซ็นก่อน' } });
+    return signature;
   }
 
   private canView(user: AuthUser, row: RequestRow): boolean {

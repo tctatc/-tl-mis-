@@ -18,6 +18,8 @@ export interface SheetProps {
   /** ผลพิจารณารอบล่าสุด */
   approvals?: ApprovalRecord[];
   officials?: Partial<Record<PositionKey, string>>;
+  /** ลายเซ็นนักศึกษา (PNG) ที่เลือกใส่ตอนยื่น — ไม่มี = เว้นช่องไว้เซ็นบนกระดาษ */
+  studentSignature?: string | null;
 }
 
 export const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
@@ -157,3 +159,6 @@ export function FinanceReceipt({ x, y, w, title, a, holder, gap = 6.8, sign = tr
     </>
   );
 }
+
+
+export { SignFill } from './parts';

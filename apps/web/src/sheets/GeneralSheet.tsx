@@ -5,12 +5,13 @@ import {
   bangkokDateParts, parseIsoDate, toBuddhistYear,
   type ApprovalRecord, type GeneralFormData, type PositionKey, type StudentSnapshot,
 } from '@csis/shared';
-import { Box, Fill, Pick, Row } from './parts';
+import { Box, Fill, Pick, Row, SignFill } from './parts';
 
 export const COLLEGE = 'วิทยาลัยเทคนิคท่าหลวงซิเมนต์ไทยอนุสรณ์';
 
 export interface GeneralSheetProps {
   student: StudentSnapshot;
+  studentSignature?: string | null;
   data: GeneralFormData;
   /** ยังไม่ยื่น = ใช้วันที่วันนี้ */
   submittedAt?: string;
@@ -45,7 +46,7 @@ function dateSegments(iso: string | undefined) {
  * แบบคำร้องทั่วไป — วางทุกบรรทัดตามตำแหน่งที่วัดจากสแกนต้นฉบับ (docs/forms/p15.jpg, 10 px = 1 mm)
  * ข้อความที่ระบบ/นักศึกษากรอก เป็นหมึกน้ำเงินบนจอ และเป็นสีดำเมื่อพิมพ์
  */
-export function GeneralSheet({ student, data, submittedAt, requestNo, approvals = [], officials = {} }: GeneralSheetProps) {
+export function GeneralSheet({ student, data, submittedAt, requestNo, approvals = [], officials = {}, studentSignature }: GeneralSheetProps) {
   const date = bangkokDateParts(submittedAt ?? new Date());
   const birth = birthText(student.birthDate);
   const knownPrefix = student.prefix === 'นาย' || student.prefix === 'นางสาว';
@@ -124,7 +125,7 @@ export function GeneralSheet({ student, data, submittedAt, requestNo, approvals 
       <p className="absolute text-center" style={{ left: '70mm', width: '60mm', top: '132mm' }}>ขอแสดงความนับถือ</p>
 
       <Row y={152} x={66.5} right={null}>
-        <span>ลงชื่อ</span><Fill w={58}>{''}</Fill><span>นักศึกษา</span>
+        <span>ลงชื่อ</span><SignFill w={58} src={studentSignature} /><span>นักศึกษา</span>
       </Row>
       <Row y={159.3} x={66.5} right={null}>
         <span>(</span><Fill w={62}>{`${student.prefix}${student.firstName} ${student.lastName}`}</Fill><span>)</span>

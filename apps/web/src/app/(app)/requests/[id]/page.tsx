@@ -208,7 +208,7 @@ function Detail() {
 
         <div>
         <PreviewFrame print>
-          {sheetsFor((type?.template ?? 'general') as TemplateKey, { student: d.student, data: d.data as FormData, submittedAt: d.submittedAt, requestNo: d.requestNo, approvals: current, officials: d.officials })}
+          {sheetsFor((type?.template ?? 'general') as TemplateKey, { student: d.student, data: d.data as FormData, submittedAt: d.submittedAt, requestNo: d.requestNo, approvals: current, officials: d.officials, studentSignature: d.studentSignature })}
         </PreviewFrame>
         </div>
       </div>

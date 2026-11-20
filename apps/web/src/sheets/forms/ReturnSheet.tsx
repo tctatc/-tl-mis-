@@ -1,9 +1,9 @@
 'use client';
 
-import { COLLEGE, DirectorOrder, FinanceReceipt, Fill, Opinion, Paren, RequestNo, Row, Text, WrittenAt, fullNameOf, nameOnly, step, str, type SheetProps } from '../blocks';
+import { COLLEGE, DirectorOrder, FinanceReceipt, Fill, Opinion, Paren, RequestNo, Row, Text, WrittenAt, fullNameOf, nameOnly, step, str, type SheetProps, SignFill } from '../blocks';
 
 /** คำร้อง ขอกลับเข้าเรียน (สแกน p08) */
-export function ReturnSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {} }: SheetProps) {
+export function ReturnSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const cause = str(d.cause);
   const at = (key: string) => (cause === key ? [str(d.causeTerm), str(d.causeYear)] : ['', '']);
@@ -40,7 +40,7 @@ export function ReturnSheet({ student: s, data: d, submittedAt, requestNo, appro
       </Row>
       <Row y={111} x={26} right={null}><span>เป็นเวลา(ระบุภาคเรียน)</span><Fill w={50}>{str(d.termsLeft)}</Fill><span>ภาคเรียน จึงจะจบหลักสูตร</span></Row>
       <Text x={33.5} y={122.5}>จึงเรียนมาเพื่อโปรดพิจารณา</Text>
-      <Row y={131.5} x={84} right={null}><span>ลงชื่อ</span><Fill w={42}>{''}</Fill><span>นักเรียน/นักศึกษา</span></Row>
+      <Row y={131.5} x={84} right={null}><span>ลงชื่อ</span><SignFill w={42} src={studentSignature} /><span>นักเรียน/นักศึกษา</span></Row>
       <Row y={138.5} x={88} right={null}><span>(</span><Fill w={42}>{fullNameOf(s)}</Fill><span>)</span></Row>
 
       <Opinion x={26} y={148} w={60} title="1. ความเห็นของครูที่ปรึกษา" a={a('advisor')} holder={s.advisorName} gap={6.6} paren={false} />

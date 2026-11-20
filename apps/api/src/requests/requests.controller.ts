@@ -11,8 +11,9 @@ const createSchema = z.object({
   typeCode: z.string().regex(/^[A-D]\d{2}$/),
   data: z.unknown(),
   idempotencyKey: z.string().uuid(),
+  useSignature: z.boolean().optional(),
 });
-const resubmitSchema = z.object({ data: z.unknown() });
+const resubmitSchema = z.object({ data: z.unknown(), useSignature: z.boolean().optional() });
 const decisionSchema = z.object({
   decision: z.enum(['approve', 'reject', 'return']),
   comment: z.string().max(300, 'ไม่เกิน 300 ตัวอักษร').default(''),
@@ -52,7 +53,8 @@ export class RequestsController {
 
   @Put('requests/:id')
   async resubmit(@CurrentUser() user: AuthUser, @Param('id', new ParseUUIDPipe()) id: string, @Body() body: unknown, @Req() req: Request) {
-    await this.requests.resubmit(user, id, parseOr400(resubmitSchema, body).data, clientIp(req));
+    const b = parseOr400(resubmitSchema, body);
+    await this.requests.resubmit(user, id, b.data, clientIp(req), b.useSignature);
     return { ok: true };
   }
 
