@@ -275,7 +275,7 @@ export class GradingService {
   }
 
   /** แก้ไขผลการเรียนหลังอนุมัติ/ประกาศ (งานวัดผล) — ต้องมีเหตุผล เก็บประวัติทุกครั้ง */
-  async correct(actor: AuthUser, recordId: string, input: { score: number | null; special: SpecialGrade | null; reason: string }, ip: string) {
+  async correct(actor: AuthUser, recordId: string, input: { score: number | null; special: SpecialGrade | null; reason: string; requestNo?: string }, ip: string) {
     return this.prisma.$transaction(async (tx) => {
       const rec = await tx.gradeRecord.findUnique({ where: { id: recordId } });
       if (!rec) throw new NotFoundException('ไม่พบผลการเรียนนี้');
@@ -285,9 +285,19 @@ export class GradingService {
       if (!grade) throw new BadRequestException('ใส่คะแนนหรือเลือกผลพิเศษ');
       const score = input.special ? null : input.score;
       if (grade === rec.grade && Number(rec.score ?? -1) === Number(score ?? -1)) throw new BadRequestException('ผลการเรียนเท่าเดิม ไม่มีอะไรเปลี่ยน');
-      await tx.gradeChange.create({ data: { gradeRecordId: rec.id, fromGrade: rec.grade, toGrade: grade, fromScore: rec.score, toScore: score, reason: input.reason, changedById: actor.id } });
+      // ผลที่ประกาศแล้ว (นักเรียนเห็นแล้ว) แก้ได้เฉพาะเมื่อมีคำร้องขอแก้ไขผลการเรียนของนักเรียนคนนี้ที่อนุมัติแล้ว
+      let requestId: string | null = null;
+      if (status === 'published') {
+        if (!input.requestNo) throw new BadRequestException('ผลที่ประกาศแล้วต้องแก้ผ่านคำร้องขอแก้ไขผลการเรียน — ใส่เลขที่คำร้อง');
+        const req = await tx.request.findUnique({ where: { requestNo: input.requestNo }, select: { id: true, studentId: true, status: true } });
+        if (!req) throw new BadRequestException(`ไม่พบคำร้องเลขที่ ${input.requestNo}`);
+        if (req.studentId !== rec.studentId) throw new BadRequestException(`คำร้องเลขที่ ${input.requestNo} เป็นของนักเรียนคนอื่น`);
+        if (req.status !== 'approved') throw new BadRequestException(`คำร้องเลขที่ ${input.requestNo} ยังไม่ได้รับอนุมัติ — แก้ผลได้หลังคำร้องอนุมัติแล้ว`);
+        requestId = req.id;
+      }
+      await tx.gradeChange.create({ data: { gradeRecordId: rec.id, fromGrade: rec.grade, toGrade: grade, fromScore: rec.score, toScore: score, reason: input.reason, requestId, changedById: actor.id } });
       await tx.gradeRecord.update({ where: { id: rec.id }, data: { grade, score } });
-      await this.audit.log({ actorUserId: actor.id, action: 'grade.correct', entity: 'grade', entityId: rec.id, before: { grade: rec.grade }, after: { grade, reason: input.reason }, ip }, tx);
+      await this.audit.log({ actorUserId: actor.id, action: 'grade.correct', entity: 'grade', entityId: rec.id, before: { grade: rec.grade }, after: { grade, reason: input.reason, requestNo: input.requestNo ?? null }, ip }, tx);
       return { grade };
     });
   }
@@ -295,13 +305,13 @@ export class GradingService {
   async changes(sectionId: string) {
     const rows = await this.prisma.gradeChange.findMany({
       where: { record: { sectionId } }, orderBy: { at: 'desc' },
-      include: { record: { select: { student: { select: { studentCode: true, prefix: true, firstName: true, lastName: true } } } } },
+      include: { record: { select: { student: { select: { studentCode: true, prefix: true, firstName: true, lastName: true } } } }, request: { select: { requestNo: true } } },
     });
     const names = new Map((await this.prisma.user.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.changedById))] } }, select: { id: true, displayName: true } })).map((u) => [u.id, u.displayName]));
     return rows.map((r) => ({
       id: r.id, at: r.at.toISOString(), studentCode: r.record.student.studentCode,
       name: `${r.record.student.prefix}${r.record.student.firstName} ${r.record.student.lastName}`,
-      fromGrade: r.fromGrade, toGrade: r.toGrade, reason: r.reason, by: names.get(r.changedById) ?? '',
+      fromGrade: r.fromGrade, toGrade: r.toGrade, reason: r.reason, requestNo: r.request?.requestNo ?? null, by: names.get(r.changedById) ?? '',
     }));
   }
 

@@ -237,6 +237,7 @@ model Request {
 
   approvals RequestApproval[]
   history   RequestStatusHistory[]
+  gradeChanges GradeChange[]
 
   @@index([studentId, submittedAt])
   @@index([status, typeCode])
@@ -605,6 +606,9 @@ model GradeChange {
   fromScore     Decimal?    @db.Decimal(5, 2)
   toScore       Decimal?    @db.Decimal(5, 2)
   reason        String
+  /// คำร้องขอแก้ไขผลการเรียนที่อนุมัติแล้ว (บังคับเมื่อแก้ผลที่ประกาศแล้ว)
+  requestId     String?     @db.Uuid
+  request       Request?    @relation(fields: [requestId], references: [id], onDelete: Restrict)
   changedById   String      @db.Uuid
   at            DateTime    @default(now())
 

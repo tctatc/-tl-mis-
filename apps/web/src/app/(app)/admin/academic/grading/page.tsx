@@ -169,7 +169,7 @@ function BulkDialog({ action, rows, onClose, onDone }: { action: 'approve' | 'pu
   );
 }
 
-interface Change { id: string; at: string; studentCode: string; name: string; fromGrade: string; toGrade: string; reason: string; by: string }
+interface Change { id: string; at: string; studentCode: string; name: string; fromGrade: string; toGrade: string; reason: string; requestNo: string | null; by: string }
 
 function SectionDialog({ id, teachers, onClose, onChanged }: { id: string; teachers: { id: string; name: string }[]; onClose: () => void; onChanged: (msg: string) => void }) {
   const d = useApi<TeachSectionDetail & { teacherUserId?: string | null }>(`/admin/grading/sections/${id}`);
@@ -182,7 +182,7 @@ function SectionDialog({ id, teachers, onClose, onChanged }: { id: string; teach
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [teacher, setTeacher] = useState('');
-  const [edit, setEdit] = useState<{ studentId: string; name: string; score: string; special: SpecialGrade | ''; reason: string } | null>(null);
+  const [edit, setEdit] = useState<{ studentId: string; name: string; score: string; special: SpecialGrade | ''; reason: string; requestNo: string } | null>(null);
 
   async function run(path: string, body: unknown, text: string, method: 'post' | 'patch' = 'post') {
     setBusy(true); setErr('');
@@ -225,7 +225,7 @@ function SectionDialog({ id, teachers, onClose, onChanged }: { id: string; teach
                     <td className="px-3 py-2"><span className="tabular-nums text-sm text-ink-muted">{r.studentCode}</span> {r.name}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{r.score ?? '–'}</td>
                     <td className="px-3 py-2">{r.grade ? <span className="inline-flex items-center gap-2"><GradePill grade={r.grade} outcome={gradeOutcome(r.grade)} /><span className="text-sm text-ink-muted">{GRADE_MEANING[r.grade as Grade]}</span></span> : <span className="text-ink-muted">ยังไม่กรอก</span>}</td>
-                    {records.data && <td className="px-3 py-2 text-right">{records.data[r.studentId] && <Button variant="ghost" onClick={() => setEdit({ studentId: r.studentId, name: r.name, score: r.score === null ? '' : String(r.score), special: r.special ?? '', reason: '' })}>แก้ไขผล</Button>}</td>}
+                    {records.data && <td className="px-3 py-2 text-right">{records.data[r.studentId] && <Button variant="ghost" onClick={() => setEdit({ studentId: r.studentId, name: r.name, score: r.score === null ? '' : String(r.score), special: r.special ?? '', reason: '', requestNo: '' })}>แก้ไขผล</Button>}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -244,11 +244,14 @@ function SectionDialog({ id, teachers, onClose, onChanged }: { id: string; teach
                 </Labeled>
                 <span className="pb-2 text-[15px]">เป็นเกรด {editPreview ? <GradePill grade={editPreview} outcome={gradeOutcome(editPreview)} /> : '–'}</span>
               </div>
-              <Labeled label="เหตุผล (บันทึกไว้ในประวัติ เช่น อ้างเลขที่คำร้องขอแก้ไขผลการเรียน)"><Textarea rows={2} value={edit.reason} onChange={(e) => setEdit({ ...edit, reason: e.target.value })} /></Labeled>
+              {s.status === 'published' && (
+                <Labeled label="เลขที่คำร้องขอแก้ไขผลการเรียน (ต้องอนุมัติแล้ว · ผลที่ประกาศแล้วแก้ได้ผ่านคำร้องเท่านั้น)"><Input value={edit.requestNo} onChange={(e) => setEdit({ ...edit, requestNo: e.target.value.trim() })} className="max-w-56 tabular-nums" /></Labeled>
+              )}
+              <Labeled label="เหตุผลที่แก้ (บันทึกไว้ในประวัติ)"><Textarea rows={2} value={edit.reason} onChange={(e) => setEdit({ ...edit, reason: e.target.value })} /></Labeled>
               <div className="flex justify-end gap-2">
                 <Button variant="secondary" onClick={() => setEdit(null)}>ยกเลิก</Button>
-                <Button loading={busy} disabled={!editPreview || edit.reason.trim().length < 5}
-                  onClick={() => void run(`/admin/grading/records/${records.data![edit.studentId]}`, { score: edit.special ? null : (parseScore(edit.score) ?? null), special: edit.special || null, reason: edit.reason }, `แก้ไขผลของ ${edit.name} แล้ว`, 'patch')}>บันทึกการแก้ไข</Button>
+                <Button loading={busy} disabled={!editPreview || edit.reason.trim().length < 5 || (s.status === 'published' && !edit.requestNo)}
+                  onClick={() => void run(`/admin/grading/records/${records.data![edit.studentId]}`, { score: edit.special ? null : (parseScore(edit.score) ?? null), special: edit.special || null, reason: edit.reason, ...(edit.requestNo ? { requestNo: edit.requestNo } : {}) }, `แก้ไขผลของ ${edit.name} แล้ว`, 'patch')}>บันทึกการแก้ไข</Button>
               </div>
             </div>
           )}
@@ -286,7 +289,7 @@ function SectionDialog({ id, teachers, onClose, onChanged }: { id: string; teach
           {changes.data && changes.data.length > 0 && (
             <details className="text-[15px]">
               <summary className="cursor-pointer font-medium">ประวัติการแก้ไขผล ({changes.data.length})</summary>
-              <ul className="mt-2 grid gap-1 text-ink-muted">{changes.data.map((c) => <li key={c.id}>{thaiDate(c.at.slice(0, 10))} · {c.studentCode} {c.name}: {c.fromGrade} → {c.toGrade} · {c.reason} · โดย {c.by}</li>)}</ul>
+              <ul className="mt-2 grid gap-1 text-ink-muted">{changes.data.map((c) => <li key={c.id}>{thaiDate(c.at.slice(0, 10))} · {c.studentCode} {c.name}: {c.fromGrade} → {c.toGrade} · {c.reason}{c.requestNo ? ` · คำร้อง ${c.requestNo}` : ''} · โดย {c.by}</li>)}</ul>
             </details>
           )}
         </div>

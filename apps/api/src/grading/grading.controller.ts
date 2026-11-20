@@ -127,7 +127,7 @@ export class GradingAdminController {
   @Patch('records/:id')
   correct(@CurrentUser() u: AuthUser, @Param('id', new ParseUUIDPipe()) id: string, @Body() b: unknown, @Req() req: Request) {
     requireAssessment(u);
-    const body = parseOr400(z.object({ score, special, reason: z.string().trim().min(5, 'ใส่เหตุผลที่แก้ (เช่น เลขที่คำร้อง)').max(500) }), b);
-    return this.grading.correct(u, id, body, clientIp(req));
+    const body = parseOr400(z.object({ score, special, reason: z.string().trim().min(5, 'ใส่เหตุผลที่แก้').max(500), requestNo: z.string().trim().max(40).optional() }), b);
+    return this.grading.correct(u, id, { score: body.score, special: body.special, reason: body.reason, ...(body.requestNo ? { requestNo: body.requestNo } : {}) }, clientIp(req));
   }
 }
