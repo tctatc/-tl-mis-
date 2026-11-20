@@ -57,7 +57,8 @@ function splitHeader(all: Cell[][]): { headers: string[]; rows: Cell[][]; header
   return { headers, rows, headerRowNo: idx + 1 };
 }
 
-export async function readSheet(buf: Buffer, fileName: string): Promise<ParsedSheet> {
+/** อ่านทุกแถวของแผ่นงานแรกที่มีข้อมูล (หรือ CSV) เป็นค่า — ไม่รันสูตร ใช้ค่าที่ Excel คำนวณเก็บไว้ */
+export async function readRows(buf: Buffer, fileName: string): Promise<{ all: Cell[][]; sheetName: string; encoding?: string }> {
   if (buf.length > IMPORT_LIMITS.maxBytes) throw new BadRequestException('ไฟล์ใหญ่เกิน 5 MB');
   const type = detect(buf, fileName);
   let all: Cell[][];
@@ -84,6 +85,11 @@ export async function readSheet(buf: Buffer, fileName: string): Promise<ParsedSh
     const parsed = Papa.parse<string[]>(decoded.text, { skipEmptyLines: 'greedy', delimitersToGuess: [',', ';', '\t', '|'] });
     all = parsed.data.map((r) => r.map((c) => (c === '' ? null : c)));
   }
+  return { all, sheetName, ...(encoding ? { encoding } : {}) };
+}
+
+export async function readSheet(buf: Buffer, fileName: string): Promise<ParsedSheet> {
+  const { all, sheetName, encoding } = await readRows(buf, fileName);
   const { headers, rows, headerRowNo } = splitHeader(all);
   if (rows.length === 0) throw new BadRequestException('มีแต่หัวตาราง ไม่มีข้อมูลนักเรียน');
   if (rows.length > IMPORT_LIMITS.maxRows) throw new BadRequestException(`ข้อมูลเกิน ${IMPORT_LIMITS.maxRows.toLocaleString()} แถว — แบ่งไฟล์ตามแผนก/รุ่นแล้วนำเข้าทีละไฟล์`);

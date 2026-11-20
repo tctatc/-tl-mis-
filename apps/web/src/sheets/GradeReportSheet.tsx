@@ -53,7 +53,7 @@ export function GradeReportSheet({ info, pieces, page, pages }: { info: GradeRep
   const kind = /ทวิภาคี/.test(s.program) ? 'ทวิภาคี' : 'ปกติ';
   const fields: [string, ReactNode, string, ReactNode][] = [
     ['รหัสนักศึกษา', <strong key="c" className="tabular-nums">{s.studentCode}</strong>, 'ชื่อ - สกุล', <strong key="n">{s.prefix}{s.firstName}&nbsp;&nbsp;{s.lastName}</strong>],
-    ['รหัสกลุ่มเรียน', '–', 'กลุ่มเรียน', s.groupNo || '–'],
+    ['รหัสกลุ่มเรียน', <span key="g" className="tabular-nums">{s.classGroupCode || '–'}</span>, 'กลุ่มเรียน', s.groupNo || '–'],
     ['ชั้นปี', `${LEVEL_LABEL[s.level]}${s.yearLevel}`, 'ประเภทวิชา', s.department.replace(/^ประเภทวิชา/, '') || '–'],
     ['ประเภทนักเรียน', kind, 'กลุ่มอาชีพ', '–'],
     ['สถานะนักเรียน', info.status, 'สาขาวิชา', s.program.replace(/\s*\(ทวิภาคี\)$/, '')],

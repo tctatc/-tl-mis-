@@ -52,7 +52,7 @@ export class AdminController {
   @Get('users')
   users(@CurrentUser() u: AuthUser, @Query() q: unknown) {
     requireAdmin(u);
-    return this.admin.listUsers(parseOr400(z.object({ q: z.string().max(60).optional(), role: role.optional(), status: z.enum(['ACTIVE', 'SUSPENDED']).optional(), page }), q));
+    return this.admin.listUsers(parseOr400(z.object({ q: z.string().max(60).optional(), role: role.optional(), status: z.enum(['ACTIVE', 'SUSPENDED']).optional(), staff: z.literal('1').optional(), page }), q));
   }
 
   @Get('staff-options')

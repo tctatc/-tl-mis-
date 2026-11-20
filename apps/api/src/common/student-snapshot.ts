@@ -9,6 +9,7 @@ export async function loadStudentSnapshot(db: PrismaService | Tx, studentId: str
       program: { include: { department: true, head: { select: { displayName: true } } } },
       advisor: { select: { displayName: true } },
       curriculum: { select: { name: true } },
+      classGroup: { select: { code: true } },
       guardians: { orderBy: { isPrimary: 'desc' }, take: 1 },
       addresses: { where: { kind: 'home' }, take: 1 },
     },
@@ -39,5 +40,6 @@ export async function loadStudentSnapshot(db: PrismaService | Tx, studentId: str
     prevProvince: s.addresses[0]?.province ?? '',
     prevLevel: s.prevLevel,
     homeProvince: s.addresses[0]?.province ?? '',
+    classGroupCode: s.classGroup?.code ?? '',
   };
 }

@@ -52,6 +52,8 @@ export interface StudentSnapshot {
   prevLevel?: string;
   /** จังหวัดตามที่อยู่ทะเบียนบ้าน (ใช้แทนจังหวัดที่เกิดเมื่อยังไม่มีข้อมูล) */
   homeProvince?: string;
+  /** รหัสกลุ่มเรียน เช่น 683190901 */
+  classGroupCode?: string;
 }
 
 export type RequestStatus = 'pending' | 'returned' | 'approved' | 'rejected' | 'cancelled';

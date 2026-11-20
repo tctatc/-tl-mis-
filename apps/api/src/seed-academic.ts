@@ -166,6 +166,11 @@ export async function seedAcademic(prisma: PrismaService, teacherIds: string[]) 
         if (step.graded) {
           const grade = tweak?.grade ?? (r[6] === 0 ? 'ผ' : pickGrade(studentCode + r[2]));
           await prisma.gradeRecord.create({ data: { studentId: student.id, sectionId: section.id, grade, status: 'published', publishedAt: new Date() } });
+          // สถานะวิชาต้องตรงกับเกรดรายคนเสมอ (ขั้นตอนส่งผลการเรียน)
+          await prisma.courseSection.update({ where: { id: section.id }, data: { gradeStatus: 'published', publishedAt: new Date() } });
+        } else {
+          // ภาคที่ยังไม่มีเกรด: ล้างสถานะ (กรณีรัน seed ซ้ำ)
+          await prisma.courseSection.update({ where: { id: section.id }, data: { gradeStatus: 'none', submittedAt: null, submittedById: null, returnNote: '', approvedAt: null, approvedById: null, approvalDate: null, publishedAt: null, publishedById: null, publishDocDate: null } });
         }
       }
     }

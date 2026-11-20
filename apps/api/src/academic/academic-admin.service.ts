@@ -78,21 +78,9 @@ export class AcademicAdminService {
         };
       }),
       counts: {
-        approved: records.filter((r) => r.status === 'approved' || r.status === 'submitted' || r.status === 'draft').length,
+        waiting: records.filter((r) => r.status !== 'published').length,
         published: records.filter((r) => r.status === 'published').length,
       },
     };
-  }
-
-  /** ประกาศผล: เกรดที่อนุมัติแล้วในภาค (เฉพาะห้องที่เลือก หรือทั้งภาค) → นักเรียนเห็น */
-  async publish(actor: AuthUser, f: ClassFilter, ip: string) {
-    if (!f.termId) throw new BadRequestException('เลือกภาคเรียน');
-    const where: Prisma.GradeRecordWhereInput = {
-      status: 'approved', section: { termId: f.termId },
-      ...(f.programId && f.yearLevel ? { student: { programId: f.programId, yearLevel: f.yearLevel, ...(f.groupNo ? { groupNo: f.groupNo } : {}) } } : {}),
-    };
-    const { count } = await this.prisma.gradeRecord.updateMany({ where, data: { status: 'published', publishedAt: new Date() } });
-    await this.audit.log({ actorUserId: actor.id, action: 'grade.publish', entity: 'term', entityId: f.termId, after: { ...f, published: count }, ip });
-    return { published: count };
   }
 }

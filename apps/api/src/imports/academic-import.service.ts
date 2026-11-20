@@ -113,8 +113,11 @@ export class AcademicImportService {
     let term: { id: string; year: number; term: number } | null = null;
     if (kind !== 'plan') {
       if (!input.termId) throw new BadRequestException('เลือกภาคเรียน');
-      term = await this.prisma.academicTerm.findUnique({ where: { id: input.termId } });
-      if (!term) throw new BadRequestException('ไม่พบภาคเรียน');
+      const found = await this.prisma.academicTerm.findUnique({ where: { id: input.termId } });
+      if (!found) throw new BadRequestException('ไม่พบภาคเรียน');
+      // ภาคปัจจุบันครูกรอกเกรดเองในเมนู "กรอกเกรด" — นำเข้าที่นี่ได้เฉพาะผลการเรียนย้อนหลัง (ยกมาจาก ศธ.02)
+      if (kind === 'grade' && found.isCurrent) throw new BadRequestException('ภาคเรียนปัจจุบันให้ครูผู้สอนกรอกเกรดเองในเมนู "กรอกเกรด" — ที่นี่นำเข้าได้เฉพาะผลการเรียนของภาคที่ผ่านมาแล้ว');
+      term = found;
     }
 
     const raw = job.rawRows as Cell[][];
@@ -415,12 +418,18 @@ export class AcademicImportService {
           const reg = await tx.registration.upsert({ where: { studentId_termId: { studentId: student.id, termId } }, update: {}, create: { studentId: student.id, termId } });
           rs = await tx.registrationSubject.upsert({ where: { registrationId_sectionId: { registrationId: reg.id, sectionId: sec.id } }, update: {}, create: { registrationId: reg.id, sectionId: sec.id } });
         }
-        // นำเข้าแล้วเป็น "อนุมัติ" — นักเรียนยังไม่เห็นจนกว่าจะกดประกาศผล
+        // ผลย้อนหลังเข้าเป็น "อนุมัติแล้ว" แล้วไปประกาศที่กระดานส่งผล — ห้ามทับวิชาที่ครูกำลังกรอก/ส่ง
+        const sec = await tx.courseSection.findUniqueOrThrow({ where: { id: rs.sectionId }, select: { gradeStatus: true, subject: { select: { code: true } } } });
+        if (sec.gradeStatus === 'draft' || sec.gradeStatus === 'submitted' || sec.gradeStatus === 'returned') {
+          throw new ConflictException(`วิชา ${sec.subject.code} ครูผู้สอนกำลังกรอกหรือส่งผลอยู่ — นำเข้าทับไม่ได้`);
+        }
+        const status = sec.gradeStatus === 'published' ? 'published' : 'approved';
         await tx.gradeRecord.upsert({
           where: { studentId_sectionId: { studentId: student.id, sectionId: rs.sectionId } },
-          update: { grade: String(r.grade), status: 'approved', publishedAt: null },
-          create: { studentId: student.id, sectionId: rs.sectionId, grade: String(r.grade), status: 'approved' },
+          update: { grade: String(r.grade), status, publishedAt: status === 'published' ? new Date() : null },
+          create: { studentId: student.id, sectionId: rs.sectionId, grade: String(r.grade), status, publishedAt: status === 'published' ? new Date() : null },
         });
+        if (sec.gradeStatus === 'none') await tx.courseSection.update({ where: { id: rs.sectionId }, data: { gradeStatus: 'approved' } });
         saved += 1;
       }
       return { saved, unchanged };

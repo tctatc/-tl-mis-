@@ -4,6 +4,7 @@ import type { RequestStatus, RequestSummary } from '@csis/shared';
 import { POSITIONS, STATUS_LABEL } from '@csis/shared';
 import { Inbox, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { GradingReminder } from '@/components/grading';
 import { RequestList } from '@/components/RequestList';
 import { Alert, Button, Card, Input, Spinner, cx } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
@@ -45,6 +46,8 @@ export default function StaffInbox() {
         <h1 className="text-2xl font-semibold">พิจารณาคำร้อง</h1>
         <p className="text-[15px] text-ink-muted">{me?.displayName}{me?.positions.length ? ` · ${me.positions.map((k) => POSITIONS[k]).join(', ')}` : ''}</p>
       </div>
+
+      {me?.roles.some((r) => r === 'TEACHER' || r === 'ADVISOR') && <GradingReminder />}
 
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-line/80 px-3 py-2.5 sm:px-4">

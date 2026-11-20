@@ -10,7 +10,9 @@ import { StudentTabBar } from '@/components/MobileNav';
 import { Spinner, cx } from '@/components/ui';
 import { MeProvider, homeOf, isAdminUser, isStaffUser, useMe } from '@/lib/me';
 
-interface NavLink { href: string; label: string; match?: string[] }
+const ACADEMIC = '/admin/academic';
+const REGISTRY = '/admin/registry';
+interface NavLink { href: string; label: string; match?: string[]; except?: string[] }
 const STUDENT_LINKS: NavLink[] = [
   { href: '/student', label: 'หน้าหลัก' },
   { href: '/student/plan', label: 'แผนการเรียน' },
@@ -36,11 +38,18 @@ function Shell({ children }: { children: ReactNode }) {
 
   const links: NavLink[] = [
     ...(me.student ? STUDENT_LINKS : []),
-    ...(isAdminUser(me) ? [{ href: '/admin', label: 'ผู้ดูแลระบบ' }] : []),
+    ...(isAdminUser(me) ? [{ href: '/admin', label: 'ผู้ดูแลระบบ', except: [ACADEMIC, REGISTRY] }] : []),
+    // งานทะเบียน: กลุ่มเรียน เลื่อนชั้น สำเร็จการศึกษา ข้อมูลนักเรียน
+    ...(isAdminUser(me) || me.roles.includes('REGISTRAR') ? [{ href: REGISTRY, label: 'งานทะเบียน', match: [REGISTRY, ...(isAdminUser(me) ? [] : ['/admin/students'])] }] : []),
     ...(isStaffUser(me) ? [{ href: '/staff', label: 'พิจารณาคำร้อง' }] : []),
-    ...(!isAdminUser(me) && me.roles.includes('REGISTRAR') ? [{ href: '/admin/students', label: 'ข้อมูลนักเรียน' }, { href: '/admin/academic', label: 'การเรียน' }] : []),
+    // แผน/ตาราง/เกรด อยู่เมนูบนสุดข้างคำร้อง — เดิมซ่อนอยู่ใต้ผู้ดูแลระบบ 3 ชั้น หาไม่เจอ
+    ...(isAdminUser(me) || me.roles.some((r) => r === 'REGISTRAR' || r === 'ASSESSMENT_STAFF') ? [{ href: ACADEMIC, label: 'การเรียนและเกรด' }] : []),
+    // ครูผู้สอน: กรอกเกรดวิชาที่ตัวเองสอน
+    ...(me.roles.some((r) => r === 'TEACHER' || r === 'ADVISOR') ? [{ href: '/teach', label: 'กรอกเกรด' }] : []),
   ];
-  const active = (l: NavLink) => (l.match ? l.match.some((m) => pathname.startsWith(m)) : l.href === '/student' ? pathname === '/student' : pathname.startsWith(l.href));
+  // เมนูเยอะ (ผู้ดูแลที่มีหลายบทบาท) → ซ่อนชื่อ/คำบนปุ่มขวาจนจอกว้างพอ ไม่ให้ตัดบรรทัด
+  const crowded = links.length > 3;
+  const active = (l: NavLink) => (l.except?.some((e) => pathname.startsWith(e)) ? false : l.match ? l.match.some((m) => pathname.startsWith(m)) : l.href === '/student' ? pathname === '/student' : pathname.startsWith(l.href));
 
   return (
     <div className="min-h-dvh">
@@ -58,12 +67,12 @@ function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <InstallApp className="hidden lg:block" />
-            <span className={cx('hidden max-w-[12rem] truncate text-sm text-ink-muted', me.student ? '2xl:block' : 'xl:block')}>{me.displayName}</span>
-            {!me.student && <Link href="/change-password" title="เปลี่ยนรหัสผ่าน" className={cx('inline-flex', 'min-h-11 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-ink-muted hover:bg-sunken hover:text-ink')}>
-              <KeyRound className="size-4" aria-hidden="true" /> <span className="sr-only sm:not-sr-only">เปลี่ยนรหัสผ่าน</span>
+            <span className={cx('hidden max-w-[12rem] truncate text-sm text-ink-muted', me.student || crowded ? '2xl:block' : 'xl:block')}>{me.displayName}</span>
+            {!me.student && <Link href="/change-password" title="เปลี่ยนรหัสผ่าน" className={cx('inline-flex', 'min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-ink-muted hover:bg-sunken hover:text-ink')}>
+              <KeyRound className="size-4" aria-hidden="true" /> <span className={crowded ? 'sr-only 2xl:not-sr-only' : 'sr-only sm:not-sr-only'}>เปลี่ยนรหัสผ่าน</span>
             </Link>}
-            <button type="button" onClick={() => void logout()} className={cx(me.student ? 'hidden lg:inline-flex' : 'inline-flex', 'min-h-11 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-ink-muted hover:bg-sunken hover:text-ink')} title="ออกจากระบบ">
-              <LogOut className="size-4" aria-hidden="true" /> <span className={me.student ? 'sr-only 2xl:not-sr-only' : 'sr-only sm:not-sr-only'}>ออกจากระบบ</span>
+            <button type="button" onClick={() => void logout()} className={cx(me.student ? 'hidden lg:inline-flex' : 'inline-flex', 'min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-ink-muted hover:bg-sunken hover:text-ink')} title="ออกจากระบบ">
+              <LogOut className="size-4" aria-hidden="true" /> <span className={me.student || crowded ? 'sr-only 2xl:not-sr-only' : 'sr-only sm:not-sr-only'}>ออกจากระบบ</span>
             </button>
           </div>
         </div>

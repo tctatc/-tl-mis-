@@ -52,10 +52,14 @@ export class AdminService {
   }
 
   // ---------------- ผู้ใช้ ----------------
-  async listUsers(q: { q?: string; role?: Role; status?: 'ACTIVE' | 'SUSPENDED'; page: number }) {
+  /** staff = ครู/เจ้าหน้าที่เท่านั้น (บัญชีนักเรียนมีหลายพันบัญชี ดูที่หน้านักเรียนแทน) */
+  async listUsers(q: { q?: string; role?: Role; status?: 'ACTIVE' | 'SUSPENDED'; staff?: '1'; page: number }) {
     const where: Prisma.UserWhereInput = {
       deletedAt: null,
-      ...(q.role ? { roles: { some: { role: q.role } } } : {}),
+      AND: [
+        ...(q.role ? [{ roles: { some: { role: q.role } } }] : []),
+        ...(q.staff ? [{ roles: { none: { role: 'STUDENT' as Role } } }] : []),
+      ],
       ...(q.status ? { status: q.status } : {}),
       ...(q.q?.trim() ? { OR: [{ username: { contains: q.q.trim(), mode: 'insensitive' } }, { displayName: { contains: q.q.trim(), mode: 'insensitive' } }] } : {}),
     };

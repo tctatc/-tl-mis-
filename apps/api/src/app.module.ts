@@ -10,6 +10,10 @@ import { StudentImportService } from './imports/student-import.service.js';
 import { AcademicAdminController } from './academic/academic-admin.controller.js';
 import { AcademicAdminService } from './academic/academic-admin.service.js';
 import { AcademicImportService } from './imports/academic-import.service.js';
+import { GradingAdminController, TeachController } from './grading/grading.controller.js';
+import { GradingService } from './grading/grading.service.js';
+import { RegistryController } from './registry/registry.controller.js';
+import { RegistryService } from './registry/registry.service.js';
 import { AuthController } from './auth/auth.controller.js';
 import { AuthService } from './auth/auth.service.js';
 import { SessionGuard } from './auth/session.guard.js';
@@ -22,10 +26,12 @@ import { RequestsService } from './requests/requests.service.js';
 
 @Module({
   imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }])],
-  controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController],
+  controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController],
   providers: [
     PrismaService,
     AuditService,
+    GradingService,
+    RegistryService,
     AuthService,
     RequestsService,
     StudentAcademicService,

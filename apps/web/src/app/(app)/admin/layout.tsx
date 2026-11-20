@@ -10,7 +10,6 @@ const TABS = [
   { href: '/admin', label: 'ภาพรวม', exact: true },
   { href: '/admin/users', label: 'ผู้ใช้งาน' },
   { href: '/admin/students', label: 'นักเรียน' },
-  { href: '/admin/academic', label: 'การเรียน' },
   { href: '/admin/positions', label: 'ผู้ลงนาม / หัวหน้าสาขา' },
   { href: '/admin/audit', label: 'ประวัติการใช้งาน' },
 ];
@@ -19,10 +18,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const { me } = useMe();
   const pathname = usePathname();
   const registrar = !!me?.roles.includes('REGISTRAR');
+  const assessmentOnly = !!me && !isAdminUser(me) && me.roles.includes('ASSESSMENT_STAFF');
   const importOnly = !!me && !isAdminUser(me) && registrar;
-  const registryPage = pathname.startsWith('/admin/students') || pathname.startsWith('/admin/import') || pathname.startsWith('/admin/academic');
-  if (!me || (!isAdminUser(me) && !(importOnly && registryPage))) return <Alert>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น</Alert>;
-  const tabs = importOnly ? TABS.filter((t) => t.href === '/admin/students' || t.href === '/admin/academic') : TABS;
+  const registryPage = pathname.startsWith('/admin/students') || pathname.startsWith('/admin/import') || pathname.startsWith('/admin/academic') || pathname.startsWith('/admin/registry');
+  if (!me || (!isAdminUser(me) && !(importOnly && registryPage) && !(assessmentOnly && pathname.startsWith('/admin/academic')))) return <Alert>หน้านี้สำหรับผู้ดูแลระบบเท่านั้น</Alert>;
+  // การเรียนและเกรดเป็นเมนูบนสุดแยกต่างหาก ไม่ต้องแสดงแถบผู้ดูแลระบบซ้อน
+  if (pathname.startsWith('/admin/academic') || pathname.startsWith('/admin/registry')) return <>{children}</>;
+  const tabs = importOnly ? TABS.filter((t) => t.href === '/admin/students') : TABS;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <nav aria-label="เมนูผู้ดูแลระบบ" className="-mx-4 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:px-0">

@@ -14,6 +14,12 @@ import { AcademicAdminService } from './academic-admin.service.js';
 const requireRegistry = (u: AuthUser) => {
   if (!u.roles.some((r) => r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'REGISTRAR')) throw new ForbiddenException('เฉพาะผู้ดูแลระบบและงานทะเบียน');
 };
+/** ดูข้อมูลการเรียน: งานทะเบียน + งานวัดผล */
+const requireAcademic = (u: AuthUser) => {
+  if (!u.roles.some((r) => r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'REGISTRAR' || r === 'ASSESSMENT_STAFF')) throw new ForbiddenException('เฉพาะผู้ดูแลระบบ งานทะเบียน และงานวัดผล');
+};
+/** นำเข้า: แผน/ตาราง = งานทะเบียน · ผลการเรียนย้อนหลัง = งานทะเบียนหรืองานวัดผล */
+const requireImport = (u: AuthUser, kind: AcademicKind) => (kind === 'grade' ? requireAcademic(u) : requireRegistry(u));
 const kindOf = (k: string): AcademicKind => {
   if (k !== 'plan' && k !== 'schedule' && k !== 'grade') throw new BadRequestException('ไม่รู้จักประเภทข้อมูล');
   return k;
@@ -29,26 +35,24 @@ const filter = z.object({
 export class AcademicAdminController {
   constructor(private readonly admin: AcademicAdminService, private readonly imports: AcademicImportService) {}
 
-  @Get('terms') terms(@CurrentUser() u: AuthUser) { requireRegistry(u); return this.admin.terms(); }
-  @Get('classes') classes(@CurrentUser() u: AuthUser) { requireRegistry(u); return this.admin.classes(); }
+  @Get('terms') terms(@CurrentUser() u: AuthUser) { requireAcademic(u); return this.admin.terms(); }
+  @Get('classes') classes(@CurrentUser() u: AuthUser) { requireAcademic(u); return this.admin.classes(); }
 
   @Get('plan')
-  plan(@CurrentUser() u: AuthUser, @Query() q: unknown) { requireRegistry(u); return this.admin.plan(parseOr400(z.object({ programId: z.string().uuid('เลือกสาขา') }), q).programId); }
+  plan(@CurrentUser() u: AuthUser, @Query() q: unknown) { requireAcademic(u); return this.admin.plan(parseOr400(z.object({ programId: z.string().uuid('เลือกสาขา') }), q).programId); }
 
   @Get('schedule')
-  schedule(@CurrentUser() u: AuthUser, @Query() q: unknown) { requireRegistry(u); return this.admin.schedule(parseOr400(filter, q)); }
+  schedule(@CurrentUser() u: AuthUser, @Query() q: unknown) { requireAcademic(u); return this.admin.schedule(parseOr400(filter, q)); }
 
   @Get('grades')
-  grades(@CurrentUser() u: AuthUser, @Query() q: unknown) { requireRegistry(u); return this.admin.grades(parseOr400(filter, q)); }
+  grades(@CurrentUser() u: AuthUser, @Query() q: unknown) { requireAcademic(u); return this.admin.grades(parseOr400(filter, q)); }
 
-  @Post('grades/publish')
-  @HttpCode(200)
-  publish(@CurrentUser() u: AuthUser, @Body() b: unknown, @Req() req: Request) { requireRegistry(u); return this.admin.publish(u, parseOr400(filter, b), clientIp(req)); }
+  // ประกาศผลย้ายไปที่กระดานส่งผล (admin/grading) ตามขั้นตอน ศธ.02
 
   // ---------------- นำเข้า ----------------
   @Get('imports/:kind/template.:ext')
   async template(@CurrentUser() u: AuthUser, @Param('kind') k: string, @Param('ext') ext: string, @Res() res: Response) {
-    requireRegistry(u);
+    requireImport(u, kindOf(k));
     const t = ACADEMIC_TEMPLATES[kindOf(k)];
     const headers = [...t.headers];
     const sample = t.sample.map((r) => [...r]);
@@ -64,7 +68,7 @@ export class AcademicAdminController {
   @Post('imports/:kind')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: IMPORT_LIMITS.maxBytes, files: 1 } }))
   upload(@CurrentUser() u: AuthUser, @Param('kind') k: string, @UploadedFile() file: { buffer: Buffer; originalname: string } | undefined) {
-    requireRegistry(u);
+    requireImport(u, kindOf(k));
     if (!file) throw new BadRequestException('เลือกไฟล์ก่อน');
     return this.imports.upload(u, kindOf(k), file);
   }
@@ -72,8 +76,8 @@ export class AcademicAdminController {
   @Post('imports/:kind/:id/preview')
   @HttpCode(200)
   preview(@CurrentUser() u: AuthUser, @Param('kind') k: string, @Param('id', new ParseUUIDPipe()) id: string, @Body() b: unknown) {
-    requireRegistry(u);
     const kind = kindOf(k);
+    requireImport(u, kind);
     const fields = Object.keys(ACADEMIC_FIELDS[kind]) as [string, ...string[]];
     const body = parseOr400(z.object({ mapping: z.partialRecord(z.enum(fields), z.number().int().min(0).max(500)), termId: z.string().uuid().optional() }), b);
     return this.imports.preview(u, kind, id, { mapping: body.mapping as Record<string, number>, ...(body.termId ? { termId: body.termId } : {}) });
@@ -82,7 +86,7 @@ export class AcademicAdminController {
   @Post('imports/:kind/:id/commit')
   @HttpCode(200)
   commit(@CurrentUser() u: AuthUser, @Param('kind') k: string, @Param('id', new ParseUUIDPipe()) id: string, @Req() req: Request) {
-    requireRegistry(u);
+    requireImport(u, kindOf(k));
     return this.imports.commit(u, kindOf(k), id, clientIp(req));
   }
 }

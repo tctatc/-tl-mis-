@@ -75,8 +75,11 @@ export default function UsersPage() {
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<Role | ''>('');
+  // บัญชีที่ระงับซ่อนไว้ก่อน ไม่ให้รก — ติ๊กดูได้เมื่ออยากเปิดใช้กลับ
+  const [showSuspended, setShowSuspended] = useState(false);
   const [page, setPage] = useState(0);
-  const params = new URLSearchParams({ page: String(page), ...(query ? { q: query } : {}), ...(role ? { role } : {}) });
+  // ปกติแสดงเฉพาะครู/เจ้าหน้าที่ — ค้นด้วยรหัสนักศึกษา/ชื่อได้ เพื่อปลดล็อกบัญชีนักเรียนที่กรอกรหัสผิด
+  const params = new URLSearchParams({ page: String(page), ...(query ? {} : { staff: '1' }), status: showSuspended ? 'SUSPENDED' : 'ACTIVE', ...(query ? { q: query } : {}), ...(role ? { role } : {}) });
   const { data, error, reload } = useApi<List>(`/admin/users?${params}`);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -86,20 +89,27 @@ export default function UsersPage() {
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
-      <PageHeader title="ผู้ใช้งาน" subtitle="ครู เจ้าหน้าที่ และบัญชีนักเรียน · ผู้ดูแลระบบตั้งรหัสผ่านให้" actions={<Button onClick={() => setCreating(true)} icon={<Plus className="size-4" aria-hidden="true" />}>เพิ่มผู้ใช้</Button>} />
+      <PageHeader title="ผู้ใช้งาน" subtitle="ครูและเจ้าหน้าที่ · ค้นรหัสนักศึกษาเพื่อปลดล็อก/ตั้งรหัสผ่านบัญชีนักเรียน" actions={<Button onClick={() => setCreating(true)} icon={<Plus className="size-4" aria-hidden="true" />}>เพิ่มผู้ใช้</Button>} />
       {issued && <IssuedBanner issued={issued} onDismiss={() => setIssued(null)} />}
       <Card>
         <form className="flex flex-wrap gap-2 border-b border-line/80 p-3" role="search" onSubmit={(e) => { e.preventDefault(); setQuery(q.trim()); setPage(0); }}>
           <div className="relative min-w-52 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ชื่อผู้ใช้ หรือชื่อ" aria-label="ค้นหาผู้ใช้" className="min-h-11 pl-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="ชื่อผู้ใช้ ชื่อ หรือรหัสนักศึกษา" aria-label="ค้นหาผู้ใช้" className="min-h-11 pl-9" />
           </div>
           <select value={role} onChange={(e) => { setRole(e.target.value as Role | ''); setPage(0); }} aria-label="กรองบทบาท" className="min-h-11 rounded-[var(--radius-control)] bg-surface px-3 ring-1 ring-line-strong">
             <option value="">ทุกบทบาท</option>
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+            {STAFF_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
           </select>
           <Button type="submit" variant="secondary">ค้นหา</Button>
+          <label className="flex min-h-11 items-center gap-2 px-1 text-sm text-ink-muted">
+            <input type="checkbox" className="size-4 accent-[var(--color-brand)]" checked={showSuspended} onChange={(e) => { setShowSuspended(e.target.checked); setPage(0); }} />
+            ดูบัญชีที่ระงับ
+          </label>
         </form>
+        {data && data.items.length === 0 && (
+          <p className="px-4 py-8 text-center text-ink-muted">{showSuspended ? 'ไม่มีบัญชีที่ระงับ' : 'ไม่พบผู้ใช้'}</p>
+        )}
         {error ? <div className="p-4"><Alert>{error}</Alert></div> : !data ? <Spinner /> : (
           <ul className="divide-y divide-line/70">
             {data.items.map((u) => (

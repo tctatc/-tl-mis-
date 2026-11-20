@@ -24,7 +24,7 @@ export function useClasses() {
 }
 
 export function Labeled({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="grid gap-1 text-sm"><span className="text-ink-muted">{label}</span>{children}</label>;
+  return <label className="grid min-w-0 gap-1 text-sm"><span className="text-ink-muted">{label}</span>{children}</label>;
 }
 
 export function TermPicker({ terms, value, onChange }: { terms: Term[]; value: string; onChange: (v: string) => void }) {
@@ -51,10 +51,10 @@ export function ClassPicker({ classes, value, onChange }: { classes: ClassRow[];
 /** ปุ่ม "นำเข้าจากไฟล์" + หน้าต่างนำเข้า */
 export function ImportButton({ kind, terms, termId, onDone }: { kind: 'plan' | 'schedule' | 'grade'; terms: Term[]; termId?: string; onDone: () => void }) {
   const [open, setOpen] = useState(false);
-  const title = { plan: 'นำเข้าแผนการเรียน', schedule: 'นำเข้าตารางเรียน', grade: 'นำเข้าผลการเรียน' }[kind];
+  const title = { plan: 'นำเข้าแผนการเรียน', schedule: 'นำเข้าตารางเรียน', grade: 'นำเข้าผลการเรียนย้อนหลัง (ภาคที่ผ่านมา)' }[kind];
   return (
     <>
-      <Button onClick={() => setOpen(true)} icon={<FileSpreadsheet className="size-4" aria-hidden="true" />}>นำเข้าจากไฟล์</Button>
+      <Button variant={kind === 'grade' ? 'secondary' : 'primary'} onClick={() => setOpen(true)} icon={<FileSpreadsheet className="size-4" aria-hidden="true" />}>{kind === 'grade' ? 'นำเข้าผลย้อนหลัง' : 'นำเข้าจากไฟล์'}</Button>
       <Dialog open={open} onClose={() => setOpen(false)} title={title} xl>
         {open && <AcademicImport kind={kind} terms={terms} {...(termId ? { defaultTermId: termId } : {})} onCommitted={onDone} onClose={() => setOpen(false)} />}
       </Dialog>

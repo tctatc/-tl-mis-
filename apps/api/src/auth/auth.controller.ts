@@ -30,16 +30,16 @@ export class AuthController {
   async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { username, password } = parseOr400(loginSchema, body);
     const { token, expiresAt } = await this.auth.login(username, password, clientIp(req), req.get('user-agent') ?? '');
-    res.cookie(SESSION_COOKIE, token, cookieOptions(expiresAt.getTime() - Date.now()));
+    res.cookie(SESSION_COOKIE, token, cookieOptions(expiresAt.getTime() - Date.now(), req.get('origin')));
     return { ok: true };
   }
 
   @AllowPendingPassword()
   @Post('logout')
   @HttpCode(200)
-  async logout(@CurrentUser() user: AuthUser, @Res({ passthrough: true }) res: Response) {
+  async logout(@CurrentUser() user: AuthUser, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout(user.sessionId);
-    res.clearCookie(SESSION_COOKIE, cookieOptions());
+    res.clearCookie(SESSION_COOKIE, cookieOptions(undefined, req.get('origin')));
     return { ok: true };
   }
 

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  IMPORT_FIELDS, academicYearOf, defaultStudentPassword, guessMapping, mapRow, normalizeOrgName, orgKey,
+  IMPORT_FIELDS, academicYearOf, defaultStudentPassword, entryYearFromCode, guessMapping, mapRow, normalizeOrgName, orgKey,
   type ImportField, type ImportMapping, type ImportedStudent, type Level, type RowIssue,
 } from '@csis/shared';
 import { hashPassword } from '../auth/auth.service.js';
@@ -8,6 +8,7 @@ import type { AuthUser } from '../auth/decorators.js';
 import { AuditService } from '../common/audit.service.js';
 import { PrismaService } from '../common/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
+import { RegistryService } from '../registry/registry.service.js';
 import { readSheet, type Cell } from './file-reader.js';
 
 export type ImportMode = 'upsert' | 'insert' | 'update';
@@ -29,7 +30,7 @@ async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>): Prom
 
 @Injectable()
 export class StudentImportService {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly registry: RegistryService) {}
 
   private async currentYear() {
     const term = await this.prisma.academicTerm.findFirst({ where: { isCurrent: true } });
@@ -209,12 +210,17 @@ export class StudentImportService {
               ...(s.fatherName ? { fatherName: s.fatherName } : {}), ...(s.motherName ? { motherName: s.motherName } : {}),
               ...(s.advisorUserId ? { advisorUserId: s.advisorUserId } : {}),
             };
+            const entry = s.entryYear ?? entryYearFromCode(s.studentCode);
             if (action === 'create') {
               const user = await tx.user.create({ data: { username: s.studentCode, displayName, passwordHash: hashByCode.get(s.studentCode)!, mustChangePassword: true, roles: { create: [{ role: 'STUDENT' }] } } });
-              await tx.student.create({ data: { ...fields, studentCode: s.studentCode, userId: user.id, curriculumId: curricula.get(programId) ?? null } });
+              const group = entry ? await this.registry.ensureGroup(tx, { programId, entryYear: entry, groupNo: s.groupNo || '1', yearLevel: s.yearLevel!, studentCodes: [s.studentCode] }) : null;
+              await tx.student.create({ data: { ...fields, ...(group ? { yearLevel: group.yearLevel, groupNo: group.groupNo, classGroupId: group.id } : {}), studentCode: s.studentCode, userId: user.id, curriculumId: curricula.get(programId) ?? null } });
               created += 1;
             } else {
-              const st = await tx.student.update({ where: { studentCode: s.studentCode }, data: fields });
+              // อยู่ในกลุ่มเรียนแล้ว: ชั้นปี/ห้อง/สาขามาจากกลุ่ม (เลื่อนชั้นแล้ว นำเข้าซ้ำต้องไม่ย้อนกลับ)
+              const current = await tx.student.findUniqueOrThrow({ where: { studentCode: s.studentCode }, select: { classGroupId: true } });
+              const { yearLevel: _y, groupNo: _g, programId: _p, ...keep } = fields as typeof fields & { groupNo?: string };
+              const st = await tx.student.update({ where: { studentCode: s.studentCode }, data: current.classGroupId ? keep : fields });
               await tx.user.update({ where: { id: st.userId }, data: { displayName } });
               updated += 1;
             }

@@ -149,6 +149,7 @@ model Program {
   students     Student[]
   curriculums  Curriculum[]
   sections     CourseSection[]
+  classGroups  ClassGroup[]
 
   @@unique([departmentId, name, level])
   @@map("programs")
@@ -183,6 +184,11 @@ model Student {
   bloodType     String        @default("")
   entryYear     Int?
   entryTerm     Int?
+  /// กลุ่มเรียน (ห้อง) — ชั้นปี/ห้องของนักเรียนเปลี่ยนตามกลุ่มเมื่อเลื่อนชั้น
+  classGroupId  String?       @db.Uuid
+  classGroup    ClassGroup?   @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+  /// วันที่อนุมัติสำเร็จการศึกษา
+  graduationDate DateTime?    @db.Date
   prevSchool    String        @default("")
   prevLevel     String        @default("")
   prevGpa       Decimal?      @db.Decimal(3, 2)
@@ -337,6 +343,9 @@ model AcademicTerm {
   startDate DateTime @db.Date
   endDate   DateTime @db.Date
   isCurrent Boolean  @default(false)
+  /// ช่วงวันที่ครูส่งผลการเรียน (แจ้งเตือน/รายการส่งช้า ไม่ล็อก)
+  gradeOpenAt DateTime? @db.Date
+  gradeDueAt  DateTime? @db.Date
 
   sections      CourseSection[]
   registrations Registration[]
@@ -393,6 +402,44 @@ model StudyPlanSubject {
   @@map("study_plan_subjects")
 }
 
+// ======================== กลุ่มเรียนและเลื่อนชั้น ========================
+
+/// กลุ่มเรียน (ห้อง) แบบ ศธ.02: รุ่น (ปีเข้า) + สาขา + ห้อง; ชั้นปีเพิ่มเมื่อเลื่อนชั้น
+model ClassGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// รหัสกลุ่มเรียน เช่น 683190901
+  code      String   @unique
+  programId String   @db.Uuid
+  program   Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  /// ปีการศึกษาที่เข้าเรียน (พ.ศ.)
+  entryYear Int
+  groupNo   String
+  yearLevel Int
+  /// ปิดใช้งานเมื่อไม่มีนักเรียนแล้ว (ไม่ลบ)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  students Student[]
+
+  @@unique([programId, entryYear, groupNo])
+  @@map("class_groups")
+}
+
+/// เลื่อนชั้น 1 ครั้ง (หลายกลุ่ม) — เก็บรายชื่อไว้ยกเลิกได้
+model PromotionBatch {
+  id           String    @id @default(uuid()) @db.Uuid
+  /// ปีการศึกษาที่จบไป (พ.ศ.)
+  academicYear Int
+  byId         String    @db.Uuid
+  at           DateTime  @default(now())
+  undoneAt     DateTime?
+  undoneById   String?   @db.Uuid
+  /// [{ classGroupId, from, to, studentIds }]
+  items        Json
+
+  @@map("promotion_batches")
+}
+
 // ======================== ลงทะเบียนและตารางเรียน ========================
 
 model CourseSection {
@@ -414,12 +461,29 @@ model CourseSection {
   yearLevel     Int?
   groupNo       String       @default("")
 
+  /// ขั้นตอนส่งผลการเรียน (เจ้าของสถานะ — GradeRecord.status เปลี่ยนตามใน transaction เดียวกัน)
+  gradeStatus    SectionGradeStatus @default(none)
+  submittedAt    DateTime?
+  submittedById  String?            @db.Uuid
+  /// เหตุผลที่งานวัดผลส่งคืนให้ครูแก้
+  returnNote     String             @default("")
+  approvedAt     DateTime?
+  approvedById   String?            @db.Uuid
+  /// วันที่ผู้บริหารลงนามอนุมัติ (บนกระดาษ)
+  approvalDate   DateTime?          @db.Date
+  publishedAt    DateTime?
+  publishedById  String?            @db.Uuid
+  /// วันที่ในหนังสือประกาศผล
+  publishDocDate DateTime?          @db.Date
+
   sessions   ClassSchedule[]
   exams      ExamSchedule[]
   enrolments RegistrationSubject[]
   grades     GradeRecord[]
 
   @@unique([termId, subjectId, groupCode])
+  @@index([termId, gradeStatus])
+  @@index([teacherUserId, termId])
   @@map("course_sections")
 }
 
@@ -494,6 +558,15 @@ model RegistrationSubject {
 
 // ======================== วัดผล ========================
 
+enum SectionGradeStatus {
+  none
+  draft
+  submitted
+  returned
+  approved
+  published
+}
+
 enum GradeStatus {
   draft
   submitted
@@ -509,13 +582,34 @@ model GradeRecord {
   section     CourseSection @relation(fields: [sectionId], references: [id], onDelete: Restrict)
   /// 4 3.5 3 2.5 2 1.5 1 0 ร มส ขร ผ มผ
   grade       String
+  /// คะแนนรวมเต็ม 100 (null = ใช้ผลพิเศษ หรือนำเข้าย้อนหลังที่มีแต่เกรด)
+  score       Decimal?      @db.Decimal(5, 2)
   status      GradeStatus   @default(draft)
   publishedAt DateTime?
   updatedAt   DateTime      @updatedAt
 
+  changes GradeChange[]
+
   @@unique([studentId, sectionId])
   @@index([studentId, status])
   @@map("grade_records")
+}
+
+/// ประวัติแก้ไขผลการเรียนหลังอนุมัติ/ประกาศ (เมนูแก้ไขผลการเรียนของ ศธ.02)
+model GradeChange {
+  id            String      @id @default(uuid()) @db.Uuid
+  gradeRecordId String      @db.Uuid
+  record        GradeRecord @relation(fields: [gradeRecordId], references: [id], onDelete: Cascade)
+  fromGrade     String
+  toGrade       String
+  fromScore     Decimal?    @db.Decimal(5, 2)
+  toScore       Decimal?    @db.Decimal(5, 2)
+  reason        String
+  changedById   String      @db.Uuid
+  at            DateTime    @default(now())
+
+  @@index([gradeRecordId, at])
+  @@map("grade_changes")
 }
 
 // ======================== นำเข้าข้อมูล ========================
