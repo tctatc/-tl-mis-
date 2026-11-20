@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: csis
+      POSTGRES_USER: csis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-csis_dev_only}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - csis-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csis -d csis"]
+      interval: 5s
+      retries: 10
+volumes:
+  csis-db:

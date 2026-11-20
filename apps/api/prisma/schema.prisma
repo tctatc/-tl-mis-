@@ -1,0 +1,571 @@
+// ระบบทะเบียนและบริการนักเรียน–นักศึกษา (CSIS)
+// ชุดแรก: บัญชีผู้ใช้/สิทธิ์/ตำแหน่ง, ข้อมูลนักศึกษาแบบย่อ, คำร้องออนไลน์, audit log
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  REGISTRAR
+  CURRICULUM_STAFF
+  ASSESSMENT_STAFF
+  TEACHER
+  ADVISOR
+  STUDENT
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum Level {
+  pvc
+  pvs
+}
+
+enum StudentStatus {
+  studying
+  on_leave
+  graduated
+  resigned
+  dismissed
+}
+
+enum RequestStatus {
+  pending
+  returned
+  approved
+  rejected
+  cancelled
+}
+
+enum Decision {
+  approve
+  reject
+  return
+}
+
+model User {
+  id                 String     @id @default(uuid()) @db.Uuid
+  username           String     @unique
+  passwordHash       String
+  displayName        String
+  status             UserStatus @default(ACTIVE)
+  mustChangePassword Boolean    @default(true)
+  failedLogins       Int        @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  deletedAt          DateTime?
+
+  roles     UserRole[]
+  teaching  CourseSection[]
+  headOf    Program[]       @relation("ProgramHead")
+  positions Position[]
+  sessions  Session[]
+  student   Student?   @relation("StudentAccount")
+  advisees  Student[]  @relation("Advisor")
+
+  @@map("users")
+}
+
+model UserRole {
+  userId String @db.Uuid
+  role   Role
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, role])
+  @@map("user_roles")
+}
+
+/// ตำแหน่งที่ลงความเห็นในคำร้อง เช่น หัวหน้างานทะเบียน — holderName พิมพ์ในวงเล็บใต้ช่องลงชื่อ
+model Position {
+  key        String   @id
+  title      String
+  holderName String   @default("")
+  userId     String?  @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  updatedAt  DateTime @updatedAt
+
+  @@map("positions")
+}
+
+/// id = SHA-256 ของโทเคนในคุกกี้ (ฐานข้อมูลรั่วก็เอาไปใช้ล็อกอินไม่ได้)
+model Session {
+  id        String   @id
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  ip        String   @default("")
+  userAgent String   @default("")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model LoginLog {
+  id       String   @id @default(uuid()) @db.Uuid
+  username String
+  userId   String?  @db.Uuid
+  success  Boolean
+  reason   String   @default("")
+  ip       String   @default("")
+  at       DateTime @default(now())
+
+  @@index([username, at])
+  @@index([ip, at])
+  @@map("login_logs")
+}
+
+model Department {
+  id       String    @id @default(uuid()) @db.Uuid
+  name     String    @unique
+  programs Program[]
+
+  @@map("departments")
+}
+
+model Program {
+  id           String     @id @default(uuid()) @db.Uuid
+  name         String
+  level        Level
+  departmentId String     @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  /// หัวหน้าสาขา (ลงความเห็นในคำร้องลาออก/กลับเข้าเรียน/ขอจบ)
+  headUserId   String?    @db.Uuid
+  head         User?      @relation("ProgramHead", fields: [headUserId], references: [id], onDelete: SetNull)
+  students     Student[]
+  curriculums  Curriculum[]
+  sections     CourseSection[]
+
+  @@unique([departmentId, name, level])
+  @@map("programs")
+}
+
+model Student {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @unique @db.Uuid
+  user          User          @relation("StudentAccount", fields: [userId], references: [id], onDelete: Restrict)
+  studentCode   String        @unique
+  prefix        String
+  firstName     String
+  lastName      String
+  birthDate     DateTime?     @db.Date
+  programId     String        @db.Uuid
+  program       Program       @relation(fields: [programId], references: [id], onDelete: Restrict)
+  yearLevel     Int
+  groupNo       String        @default("")
+  fatherName    String        @default("")
+  motherName    String        @default("")
+  phone         String        @default("")
+  status        StudentStatus @default(studying)
+  advisorUserId String?       @db.Uuid
+  advisor       User?         @relation("Advisor", fields: [advisorUserId], references: [id], onDelete: SetNull)
+  curriculumId  String?       @db.Uuid
+  curriculum    Curriculum?   @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  nickname      String        @default("")
+  email         String        @default("")
+  nationalId    String        @default("")
+  nationality   String        @default("ไทย")
+  religion      String        @default("")
+  bloodType     String        @default("")
+  entryYear     Int?
+  entryTerm     Int?
+  prevSchool    String        @default("")
+  prevLevel     String        @default("")
+  prevGpa       Decimal?      @db.Decimal(3, 2)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  requests      Request[]
+  addresses     StudentAddress[]
+  guardians     StudentGuardian[]
+  registrations Registration[]
+  grades        GradeRecord[]
+
+  @@index([advisorUserId])
+  @@map("students")
+}
+
+/// ลำดับเลขที่คำร้องต่อปี พ.ศ. (เพิ่มด้วย UPDATE ... RETURNING ใน transaction เดียว ไม่ชนกัน)
+model RequestCounter {
+  year Int @id
+  last Int @default(0)
+
+  @@map("request_counters")
+}
+
+model Request {
+  id              String        @id @default(uuid()) @db.Uuid
+  requestNo       String        @unique
+  typeCode        String
+  template        String
+  studentId       String        @db.Uuid
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  submitterUserId String        @db.Uuid
+  /// ข้อมูลที่นักศึกษากรอก (ผ่าน zod ของประเภทนั้นแล้ว)
+  data            Json
+  /// ข้อมูลนักศึกษา ณ วันยื่น ใช้พิมพ์แบบฟอร์ม
+  studentSnapshot Json
+  status          RequestStatus @default(pending)
+  currentStep     Int           @default(0)
+  round           Int           @default(1)
+  /// กันกดยื่นซ้ำ: คีย์ที่หน้าเว็บสร้างต่อ 1 ครั้งที่เปิดฟอร์ม
+  idempotencyKey  String        @unique
+  submittedAt     DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  closedAt        DateTime?
+
+  approvals RequestApproval[]
+  history   RequestStatusHistory[]
+
+  @@index([studentId, submittedAt])
+  @@index([status, typeCode])
+  @@map("requests")
+}
+
+model RequestApproval {
+  id          String   @id @default(uuid()) @db.Uuid
+  requestId   String   @db.Uuid
+  request     Request  @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  round       Int
+  stepIndex   Int
+  stepKey     String
+  decision    Decision
+  comment     String   @default("")
+  actorUserId String   @db.Uuid
+  actorName   String
+  actorTitle  String
+  decidedAt   DateTime @default(now())
+
+  /// ขั้นเดียวกันในรอบเดียวกันพิจารณาได้ครั้งเดียว (กันสองคนกดพร้อมกัน)
+  @@unique([requestId, round, stepIndex])
+  @@map("request_approvals")
+}
+
+model RequestStatusHistory {
+  id          String         @id @default(uuid()) @db.Uuid
+  requestId   String         @db.Uuid
+  request     Request        @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  fromStatus  RequestStatus?
+  toStatus    RequestStatus
+  note        String         @default("")
+  actorUserId String?        @db.Uuid
+  actorName   String
+  at          DateTime       @default(now())
+
+  @@index([requestId, at])
+  @@map("request_status_history")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String
+  entity      String
+  entityId    String
+  before      Json?
+  after       Json?
+  ip          String   @default("")
+  at          DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([actorUserId, at])
+  @@map("audit_logs")
+}
+
+// ======================== ข้อมูลประวัตินักศึกษา ========================
+
+enum AddressKind {
+  home
+  current
+}
+
+model StudentAddress {
+  id          String      @id @default(uuid()) @db.Uuid
+  studentId   String      @db.Uuid
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  kind        AddressKind
+  houseNo     String      @default("")
+  moo         String      @default("")
+  road        String      @default("")
+  subdistrict String      @default("")
+  district    String      @default("")
+  province    String      @default("")
+  postcode    String      @default("")
+
+  @@unique([studentId, kind])
+  @@map("student_addresses")
+}
+
+model StudentGuardian {
+  id         String  @id @default(uuid()) @db.Uuid
+  studentId  String  @db.Uuid
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  /// บิดา / มารดา / ผู้ปกครอง
+  relation   String
+  name       String
+  occupation String  @default("")
+  phone      String  @default("")
+  isPrimary  Boolean @default(false)
+
+  @@index([studentId])
+  @@map("student_guardians")
+}
+
+// ======================== หลักสูตรและรายวิชา ========================
+
+model AcademicTerm {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// ปีการศึกษา พ.ศ.
+  year      Int
+  /// 1, 2 หรือ 3 (ฤดูร้อน)
+  term      Int
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  isCurrent Boolean  @default(false)
+
+  sections      CourseSection[]
+  registrations Registration[]
+
+  @@unique([year, term])
+  @@map("academic_terms")
+}
+
+model Subject {
+  id        String @id @default(uuid()) @db.Uuid
+  code      String @unique
+  name      String
+  theory    Int
+  practice  Int
+  credits   Int
+
+  planItems StudyPlanSubject[]
+  sections  CourseSection[]
+
+  @@map("subjects")
+}
+
+model Curriculum {
+  id        String  @id @default(uuid()) @db.Uuid
+  name      String
+  /// ปีหลักสูตร พ.ศ. เช่น 2567
+  year      Int
+  programId String  @db.Uuid
+  program   Program @relation(fields: [programId], references: [id], onDelete: Restrict)
+  /// หน่วยกิตรวมขั้นต่ำตลอดหลักสูตร
+  minCredits Int
+
+  items    StudyPlanSubject[]
+  students Student[]
+
+  @@unique([programId, year])
+  @@map("curriculums")
+}
+
+/// แผนการเรียน: วิชาไหนเรียนชั้นปี/ภาคเรียนใด
+model StudyPlanSubject {
+  id           String     @id @default(uuid()) @db.Uuid
+  curriculumId String     @db.Uuid
+  curriculum   Curriculum @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  subjectId    String     @db.Uuid
+  subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  yearLevel    Int
+  term         Int
+  /// หมวดวิชา เช่น หมวดสมรรถนะแกนกลาง
+  category     String
+
+  @@unique([curriculumId, subjectId])
+  @@index([curriculumId, yearLevel, term])
+  @@map("study_plan_subjects")
+}
+
+// ======================== ลงทะเบียนและตารางเรียน ========================
+
+model CourseSection {
+  id            String       @id @default(uuid()) @db.Uuid
+  termId        String       @db.Uuid
+  term          AcademicTerm @relation(fields: [termId], references: [id], onDelete: Restrict)
+  subjectId     String       @db.Uuid
+  subject       Subject      @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  /// กลุ่มเรียน
+  groupCode     String
+  teacherUserId String?      @db.Uuid
+  teacher       User?        @relation(fields: [teacherUserId], references: [id], onDelete: SetNull)
+  /// ชื่อครูตามไฟล์นำเข้า (ใช้เมื่อยังไม่มีบัญชีครูในระบบ)
+  teacherName   String       @default("")
+  capacity      Int          @default(40)
+  /// ห้องเรียนที่กลุ่มเรียนนี้สังกัด (สาขา + ชั้นปี + ห้อง) — ใช้ผูกตารางเรียน/ผลการเรียนกับนักเรียน
+  programId     String?      @db.Uuid
+  program       Program?     @relation(fields: [programId], references: [id], onDelete: SetNull)
+  yearLevel     Int?
+  groupNo       String       @default("")
+
+  sessions   ClassSchedule[]
+  exams      ExamSchedule[]
+  enrolments RegistrationSubject[]
+  grades     GradeRecord[]
+
+  @@unique([termId, subjectId, groupCode])
+  @@map("course_sections")
+}
+
+model ClassSchedule {
+  id        String        @id @default(uuid()) @db.Uuid
+  sectionId String        @db.Uuid
+  section   CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  /// 1 = จันทร์ ... 7 = อาทิตย์
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  room      String
+
+  @@index([sectionId])
+  @@map("class_schedules")
+}
+
+enum ExamKind {
+  midterm
+  final
+}
+
+model ExamSchedule {
+  id        String        @id @default(uuid()) @db.Uuid
+  sectionId String        @db.Uuid
+  section   CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  kind      ExamKind
+  date      DateTime      @db.Date
+  startTime String
+  endTime   String
+  room      String
+
+  @@unique([sectionId, kind])
+  @@map("exam_schedules")
+}
+
+enum RegistrationStatus {
+  registered
+  cancelled
+}
+
+/// บัตรลงทะเบียน 1 ใบ ต่อนักศึกษา ต่อภาคเรียน
+model Registration {
+  id           String             @id @default(uuid()) @db.Uuid
+  studentId    String             @db.Uuid
+  student      Student            @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  termId       String             @db.Uuid
+  term         AcademicTerm       @relation(fields: [termId], references: [id], onDelete: Restrict)
+  status       RegistrationStatus @default(registered)
+  registeredAt DateTime           @default(now())
+
+  subjects RegistrationSubject[]
+
+  @@unique([studentId, termId])
+  @@map("registrations")
+}
+
+model RegistrationSubject {
+  id             String        @id @default(uuid()) @db.Uuid
+  registrationId String        @db.Uuid
+  registration   Registration  @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  sectionId      String        @db.Uuid
+  section        CourseSection @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  /// regular = ปกติ, repeat = เรียนซ้ำ, regrade = รีเกรด
+  kind           String        @default("regular")
+  withdrawn      Boolean       @default(false)
+
+  @@unique([registrationId, sectionId])
+  @@index([sectionId])
+  @@map("registration_subjects")
+}
+
+// ======================== วัดผล ========================
+
+enum GradeStatus {
+  draft
+  submitted
+  approved
+  published
+}
+
+model GradeRecord {
+  id          String        @id @default(uuid()) @db.Uuid
+  studentId   String        @db.Uuid
+  student     Student       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  sectionId   String        @db.Uuid
+  section     CourseSection @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  /// 4 3.5 3 2.5 2 1.5 1 0 ร มส ขร ผ มผ
+  grade       String
+  status      GradeStatus   @default(draft)
+  publishedAt DateTime?
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([studentId, sectionId])
+  @@index([studentId, status])
+  @@map("grade_records")
+}
+
+// ======================== นำเข้าข้อมูล ========================
+
+enum ImportStatus {
+  uploaded
+  previewed
+  committing
+  committed
+  failed
+}
+
+/// งานนำเข้า 1 ไฟล์: อัปโหลด → จับคู่คอลัมน์/ตรวจ (preview) → ยืนยัน (commit)
+model ImportJob {
+  id          String       @id @default(uuid()) @db.Uuid
+  kind        String
+  fileName    String
+  status      ImportStatus @default(uploaded)
+  createdById String       @db.Uuid
+  createdAt   DateTime     @default(now())
+  committedAt DateTime?
+  headers     Json
+  /// แถวข้อมูลดิบจากไฟล์ (ไม่รวมหัวตาราง) เก็บไว้ให้จับคู่ใหม่ได้โดยไม่ต้องอัปโหลดซ้ำ
+  rawRows     Json
+  mapping     Json?
+  options     Json?
+  total       Int          @default(0)
+  created     Int          @default(0)
+  updated     Int          @default(0)
+  errors      Int          @default(0)
+  skipped     Int          @default(0)
+  summary     Json?
+
+  rows ImportJobRow[]
+
+  @@index([kind, createdAt])
+  @@map("import_jobs")
+}
+
+model ImportJobRow {
+  id     String    @id @default(uuid()) @db.Uuid
+  jobId  String    @db.Uuid
+  job    ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /// เลขแถวตามไฟล์ (นับหัวตารางด้วย ให้ตรงกับที่เห็นใน Excel)
+  rowNo  Int
+  /// create / update / error
+  action String
+  data   Json
+  issues Json
+
+  @@index([jobId, rowNo])
+  @@map("import_job_rows")
+}

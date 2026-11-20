@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5c0f1a">
+<title>ไม่มีอินเทอร์เน็ต · ระบบทะเบียนออนไลน์</title>
+<style>
+  /* หน้าออฟไลน์ไม่พึ่ง JavaScript/ไฟล์อื่นของ Next (ตอนไม่มีเน็ตโหลดไม่ได้) */
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: hsl(36 30% 96%); color: hsl(350 22% 13%);
+    font-family: 'IBM Plex Sans Thai', 'Sarabun', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 22rem; text-align: center; display: grid; justify-items: center; gap: 12px; }
+  img { width: 64px; height: 64px; }
+  h1 { font-size: 1.25rem; margin: 8px 0 0; text-wrap: balance; }
+  p { margin: 0; color: hsl(350 8% 36%); line-height: 1.6; text-wrap: pretty; }
+  button { margin-top: 8px; min-height: 44px; padding: 0 20px; border: 0; border-radius: 10px; background: hsl(352 70% 36%); color: #fff; font: inherit; font-weight: 500; cursor: pointer; }
+  button:focus-visible { outline: 2px solid hsl(352 70% 36%); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/college-logo.png" alt="">
+  <h1>ไม่ได้เชื่อมต่ออินเทอร์เน็ต</h1>
+  <p>ตารางเรียน ผลการเรียน และคำร้อง ต้องใช้อินเทอร์เน็ตทุกครั้ง ระบบไม่เก็บข้อมูลส่วนตัวไว้ในเครื่องเพื่อความปลอดภัย</p>
+  <button type="button" onclick="location.reload()">ลองใหม่</button>
+</main>
+</body>
+</html>

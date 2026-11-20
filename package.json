@@ -1,0 +1,16 @@
+{
+  "name": "college-sis",
+  "private": true,
+  "description": "ระบบทะเบียนและบริการนักเรียน–นักศึกษาออนไลน์ วิทยาลัยเทคนิคท่าหลวงซิเมนต์ไทยอนุสรณ์",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "workspaces": ["packages/shared", "apps/api", "apps/web"],
+  "scripts": {
+    "db:up": "docker compose up -d db",
+    "build:shared": "npm run build -w @csis/shared",
+    "test": "npm test -w @csis/shared && npm test -w @csis/api",
+    "typecheck": "npm run build:shared && npm run typecheck -w @csis/api && npm run typecheck -w @csis/web",
+    "dev:api": "npm run dev -w @csis/api",
+    "dev:web": "npm run dev -w @csis/web"
+  }
+}
