@@ -89,7 +89,7 @@ export class RequestsService {
           throw new ForbiddenException('สถานภาพนักศึกษาไม่สามารถยื่นคำร้องออนไลน์ได้ กรุณาติดต่องานทะเบียน');
         }
         const snapshot = await loadStudentSnapshot(tx, student.id);
-        const studentSignature = input.useSignature ? this.savedSignature(student.signature) : null;
+        const studentSigned = !!input.useSignature;
         const year = academicYearOf(new Date());
         const [{ last }] = await tx.$queryRaw<[{ last: number }]>`
           INSERT INTO request_counters (year, last) VALUES (${year}, 1)
@@ -104,12 +104,12 @@ export class RequestsService {
             submitterUserId: user.id,
             data: data as Prisma.InputJsonValue,
             studentSnapshot: snapshot as unknown as Prisma.InputJsonValue,
-            studentSignature,
+            studentSigned,
             idempotencyKey: input.idempotencyKey,
             history: { create: { fromStatus: null, toStatus: 'pending', note: 'ยื่นคำร้อง', actorUserId: user.id, actorName: user.displayName } },
           },
         });
-        await this.audit.log({ actorUserId: user.id, action: 'request.create', entity: 'request', entityId: created.id, after: { typeCode: type.code, data, signed: !!studentSignature }, ip }, tx);
+        await this.audit.log({ actorUserId: user.id, action: 'request.create', entity: 'request', entityId: created.id, after: { typeCode: type.code, data, signed: studentSigned }, ip }, tx);
         return { id: created.id, requestNo: created.requestNo };
       });
     } catch (error) {
@@ -140,12 +140,9 @@ export class RequestsService {
     }
     await this.prisma.$transaction(async (tx) => {
       const snapshot = await loadStudentSnapshot(tx, row.studentId);
-      // ไม่ส่งตัวเลือกมา = คงลายเซ็นเดิมของใบนี้
-      const signature = useSignature === undefined ? undefined
-        : useSignature ? this.savedSignature((await tx.student.findUniqueOrThrow({ where: { id: row.studentId }, select: { signature: true } })).signature) : null;
       const updated = await tx.request.updateMany({
         where: { id, status: 'returned', round: row.round },
-        data: { ...next, data: data as Prisma.InputJsonValue, studentSnapshot: snapshot as unknown as Prisma.InputJsonValue, ...(signature === undefined ? {} : { studentSignature: signature }) },
+        data: { ...next, data: data as Prisma.InputJsonValue, studentSnapshot: snapshot as unknown as Prisma.InputJsonValue, ...(useSignature === undefined ? {} : { studentSigned: useSignature }) },
       });
       if (updated.count === 0) throw new ConflictException('คำร้องเปลี่ยนสถานะไปแล้ว กรุณารีเฟรชหน้า');
       await tx.requestStatusHistory.create({ data: { requestId: id, fromStatus: 'returned', toStatus: 'pending', note: 'แก้ไขแล้วส่งใหม่', actorUserId: user.id, actorName: user.displayName } });
@@ -189,7 +186,7 @@ export class RequestsService {
       ...this.toSummary(row),
       data: row.data,
       student: row.studentSnapshot as unknown as StudentSnapshot,
-      studentSignature: row.studentSignature,
+      studentSigned: row.studentSigned,
       approvals: row.approvals.map((a): ApprovalRecord => ({
         id: a.id, round: a.round, stepIndex: a.stepIndex, stepKey: a.stepKey, decision: a.decision as Decision,
         comment: a.comment, actorName: a.actorName, actorTitle: a.actorTitle, decidedAt: a.decidedAt.toISOString(),
@@ -302,12 +299,6 @@ export class RequestsService {
     }
     if (or.length === 0) return { id: { in: [] } };
     return { status: 'pending', submitterUserId: { not: user.id }, OR: or };
-  }
-
-  /** ลายเซ็นที่บันทึกไว้ของนักศึกษา — เลือกใช้แต่ยังไม่เคยวาด = แจ้งให้วาดก่อน */
-  private savedSignature(signature: string | null): string {
-    if (!signature) throw new BadRequestException({ message: 'ยังไม่มีลายเซ็นที่บันทึกไว้ — วาดลายเซ็นก่อน หรือเลือกเว้นว่างไว้เซ็นบนกระดาษ', fields: { signature: 'วาดลายเซ็นก่อน' } });
-    return signature;
   }
 
   private canView(user: AuthUser, row: RequestRow): boolean {

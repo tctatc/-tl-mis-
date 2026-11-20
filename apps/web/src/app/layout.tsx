@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Sans_Thai, Sarabun } from 'next/font/google';
+import { Charm, IBM_Plex_Sans_Thai, Sarabun } from 'next/font/google';
 import { ServiceWorker } from '@/components/ServiceWorker';
 import './globals.css';
 
 const plex = IBM_Plex_Sans_Thai({ subsets: ['thai', 'latin'], weight: ['400', '500', '600', '700'], variable: '--font-plex', display: 'swap' });
 const sarabun = Sarabun({ subsets: ['thai', 'latin'], weight: ['400', '700'], variable: '--font-sarabun', display: 'swap' });
+/** ลายมือ: ชื่อนักศึกษาในช่องลงชื่อเมื่อเลือกลงชื่อออนไลน์ */
+const charm = Charm({ subsets: ['thai', 'latin'], weight: ['400'], variable: '--font-sign', display: 'swap' });
 
 export const metadata: Metadata = {
   title: { default: 'ระบบทะเบียนออนไลน์', template: '%s · ระบบทะเบียนออนไลน์' },
@@ -20,7 +22,7 @@ export const viewport: Viewport = { themeColor: '#5c0f1a', width: 'device-width'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="th" className={`${plex.variable} ${sarabun.variable}`}>
+    <html lang="th" className={`${plex.variable} ${sarabun.variable} ${charm.variable}`}>
       <body className="min-h-dvh">{children}<ServiceWorker /></body>
     </html>
   );

@@ -189,9 +189,6 @@ model Student {
   classGroup    ClassGroup?   @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
   /// วันที่อนุมัติสำเร็จการศึกษา
   graduationDate DateTime?    @db.Date
-  /// ลายเซ็นที่นักศึกษาวาดไว้ (PNG data URL) — ใส่ในแบบฟอร์มเฉพาะเมื่อนักศึกษาเลือกตอนยื่น
-  signature          String?
-  signatureUpdatedAt DateTime?
   prevSchool    String        @default("")
   prevLevel     String        @default("")
   prevGpa       Decimal?      @db.Decimal(3, 2)
@@ -229,8 +226,8 @@ model Request {
   data            Json
   /// ข้อมูลนักศึกษา ณ วันยื่น ใช้พิมพ์แบบฟอร์ม
   studentSnapshot Json
-  /// ลายเซ็นนักศึกษา ณ วันยื่น (null = เว้นช่องไว้เซ็นบนกระดาษ)
-  studentSignature String?
+  /// นักศึกษาเลือกลงชื่อออนไลน์ (เขียนชื่อ-สกุลในช่องลงชื่อ) — false = เว้นไว้เซ็นบนกระดาษ
+  studentSigned   Boolean       @default(false)
   status          RequestStatus @default(pending)
   currentStep     Int           @default(0)
   round           Int           @default(1)

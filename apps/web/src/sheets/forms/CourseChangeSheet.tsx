@@ -6,7 +6,7 @@ import { COLLEGE, DirectorOrder, Fill, Paren, RequestNo, Row, Text, WrittenAt, n
 const cell = 'border border-black px-[1mm] text-center align-middle';
 
 /** คำร้อง ขอเปลี่ยนแปลงรายวิชาเรียน (เรียนซ้ำ,รีเกรด,เพิ่ม,ถอน) (สแกน p11) */
-export function CourseChangeSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
+export function CourseChangeSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSigned }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const actions = (d.actions as string[] | undefined) ?? [];
   const rows = ((d.courses as CourseRow[] | undefined) ?? []).slice(0, 5);
@@ -68,7 +68,7 @@ export function CourseChangeSheet({ student: s, data: d, submittedAt, requestNo,
       <Row y={162} x={20.5} right={36}><span>ขอเปลี่ยนแปลงรายวิชาจำนวน</span><span className="ml-auto" /><Fill w={26}>{rows.length ? String(change) : ''}</Fill><span>คาบ/สัปดาห์</span></Row>
       <Row y={169} x={20.5} right={36}><span>รวมลงทะเบียนในภาคเรียนทั้งหมด</span><span className="ml-auto" /><Fill w={26}>{rows.length ? String(total) : ''}</Fill><span>คาบ/สัปดาห์</span></Row>
       <Text x={20.5} y={181}>จึงเรียนมาเพื่อโปรดพิจารณา</Text>
-      <Row y={187.5} x={118} right={null}><span>ลงชื่อ</span><SignFill w={40} src={studentSignature} /><span>นักศึกษา</span></Row>
+      <Row y={187.5} x={118} right={null}><span>ลงชื่อ</span><SignFill w={40} name={studentSigned ? `${s.firstName} ${s.lastName}` : undefined} /><span>นักศึกษา</span></Row>
       {opinion('advisor', 'ความเห็นครูที่ปรึกษา', 194.5, s.advisorName)}
       {opinion('curriculum', 'ความเห็นหัวหน้างานหลักสูตร', 201.5)}
       <Row y={208.5} x={19.5} right={22}>

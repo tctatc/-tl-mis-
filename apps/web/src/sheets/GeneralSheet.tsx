@@ -11,7 +11,7 @@ export const COLLEGE = 'วิทยาลัยเทคนิคท่าห�
 
 export interface GeneralSheetProps {
   student: StudentSnapshot;
-  studentSignature?: string | null;
+  studentSigned?: boolean;
   data: GeneralFormData;
   /** ยังไม่ยื่น = ใช้วันที่วันนี้ */
   submittedAt?: string;
@@ -46,7 +46,7 @@ function dateSegments(iso: string | undefined) {
  * แบบคำร้องทั่วไป — วางทุกบรรทัดตามตำแหน่งที่วัดจากสแกนต้นฉบับ (docs/forms/p15.jpg, 10 px = 1 mm)
  * ข้อความที่ระบบ/นักศึกษากรอก เป็นหมึกน้ำเงินบนจอ และเป็นสีดำเมื่อพิมพ์
  */
-export function GeneralSheet({ student, data, submittedAt, requestNo, approvals = [], officials = {}, studentSignature }: GeneralSheetProps) {
+export function GeneralSheet({ student, data, submittedAt, requestNo, approvals = [], officials = {}, studentSigned }: GeneralSheetProps) {
   const date = bangkokDateParts(submittedAt ?? new Date());
   const birth = birthText(student.birthDate);
   const knownPrefix = student.prefix === 'นาย' || student.prefix === 'นางสาว';
@@ -125,7 +125,7 @@ export function GeneralSheet({ student, data, submittedAt, requestNo, approvals 
       <p className="absolute text-center" style={{ left: '70mm', width: '60mm', top: '132mm' }}>ขอแสดงความนับถือ</p>
 
       <Row y={152} x={66.5} right={null}>
-        <span>ลงชื่อ</span><SignFill w={58} src={studentSignature} /><span>นักศึกษา</span>
+        <span>ลงชื่อ</span><SignFill w={58} name={studentSigned ? `${student.firstName} ${student.lastName}` : undefined} /><span>นักศึกษา</span>
       </Row>
       <Row y={159.3} x={66.5} right={null}>
         <span>(</span><Fill w={62}>{`${student.prefix}${student.firstName} ${student.lastName}`}</Fill><span>)</span>

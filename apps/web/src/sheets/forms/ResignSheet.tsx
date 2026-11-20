@@ -3,7 +3,7 @@
 import { COLLEGE, DirectorOrder, Fill, Opinion, Paren, RequestNo, Row, Text, WrittenAt, fullNameOf, nameOnly, step, str, SignFill, type SheetProps } from '../blocks';
 
 /** คำร้อง ขอลาออกจากสถานศึกษา (สแกน p07) */
-export function ResignSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
+export function ResignSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSigned }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   return (
     <article className="sheet compact" aria-label="คำร้องขอลาออกจากสถานศึกษา">
@@ -25,7 +25,7 @@ export function ResignSheet({ student: s, data: d, submittedAt, requestNo, appro
       </Row>
       <Row y={68.3} x={27.4} right={25}><Fill grow left>{str(d.reason)}</Fill></Row>
       <Text x={32.4} y={75}>จึงเรียนมาเพื่อโปรดดำเนินการ ตามความประสงค์ของข้าพเจ้าด้วย</Text>
-      <Row y={80} x={121} right={null}><span>ลงชื่อ</span><SignFill w={48} src={studentSignature} /><span>นักศึกษา</span></Row>
+      <Row y={80} x={121} right={null}><span>ลงชื่อ</span><SignFill w={48} name={studentSigned ? `${s.firstName} ${s.lastName}` : undefined} /><span>นักศึกษา</span></Row>
       <Row y={86.6} x={125.5} right={null}><span>(</span><Fill w={46}>{fullNameOf(s)}</Fill><span>)</span></Row>
       <Row y={92.3} x={121} right={null}><span>ลงชื่อ</span><Fill w={48}>{''}</Fill><span>ผู้ปกครอง</span></Row>
       <Row y={99} x={125.5} right={null}><span>(</span><Fill w={46}>{str(d.guardianName)}</Fill><span>)</span></Row>

@@ -20,7 +20,7 @@ function Checked({ x, y, title, ok, not, a, holder }: { x: number; y: number; ti
 }
 
 /** แบบคำร้องขอจบการศึกษา (สแกน p09) */
-export function GraduateSheet({ student: s, data: d, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
+export function GraduateSheet({ student: s, data: d, requestNo, approvals, officials = {}, studentSigned }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const birth = parseIsoDate(s.birthDate);
   const reg = a('registrar');
@@ -49,7 +49,7 @@ export function GraduateSheet({ student: s, data: d, requestNo, approvals, offic
       <Text x={27} y={94}>จึงขออนุมัติสำเร็จการศึกษาจาก{COLLEGE}</Text>
       <Text x={38.5} y={102}>จึงเรียนมาเพื่อโปรดทราบ</Text>
       <Text x={137} y={111}>ขอแสดงความนับถือ</Text>
-      <Row y={124} x={121} right={null}><span>ลงชื่อ</span><SignFill w={42} src={studentSignature} /><span>นักศึกษา</span></Row>
+      <Row y={124} x={121} right={null}><span>ลงชื่อ</span><SignFill w={42} name={studentSigned ? `${s.firstName} ${s.lastName}` : undefined} /><span>นักศึกษา</span></Row>
       <Row y={131} x={125} right={null}><span>(</span><Fill w={42}>{fullNameOf(s)}</Fill><span>)</span></Row>
 
       <Opinion x={29.5} y={139} w={60} title="1.  ความเห็นครูที่ปรึกษา" a={a('advisor')} holder={s.advisorName} lines={0} date={false} signLabel="(ลงชื่อ)" gap={7} />

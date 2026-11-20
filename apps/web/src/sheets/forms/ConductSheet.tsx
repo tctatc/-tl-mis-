@@ -4,7 +4,7 @@ import { THAI_MONTHS, parseIsoDate, toBuddhistYear } from '@csis/shared';
 import { COLLEGE, DirectorOrder, Fill, Opinion, Paren, RequestNo, Row, Text, WrittenAt, nameOnly, step, str, type SheetProps, SignFill } from '../blocks';
 
 /** คำร้อง ขอใบรับรองความประพฤติ (สแกน p14) */
-export function ConductSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
+export function ConductSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSigned }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   const birth = parseIsoDate(s.birthDate);
   return (
@@ -34,7 +34,7 @@ export function ConductSheet({ student: s, data: d, submittedAt, requestNo, appr
       <Text x={29.5} y={106}>มีความประสงค์ขอหลักฐานราชการข้างต้นเพื่อใช้ (ระบุวัตถุประสงค์ที่นำไปใช้ให้ชัดเจน)</Text>
       <Row y={114.5} x={27.5} right={22}><Fill grow left>{str(d.purpose)}</Fill></Row>
       <Text x={44} y={124}>จึงเรียนมาเพื่อโปรดทราบและพิจารณา</Text>
-      <Row y={134} x={92} right={null}><span>ลงชื่อ</span><SignFill w={52} src={studentSignature} /><span>นักเรียน/นักศึกษา</span></Row>
+      <Row y={134} x={92} right={null}><span>ลงชื่อ</span><SignFill w={52} name={studentSigned ? `${s.firstName} ${s.lastName}` : undefined} /><span>นักเรียน/นักศึกษา</span></Row>
 
       <Opinion x={29.5} y={144} w={58} title="1. ความเห็นของครูที่ปรึกษา" a={a('advisor')} holder={s.advisorName} gap={6.4} />
       <Opinion x={109} y={144} w={60} title="2. ความเห็นของฝ่ายปกครอง" a={a('discipline')} holder={officials.discipline_head} gap={6.4} />

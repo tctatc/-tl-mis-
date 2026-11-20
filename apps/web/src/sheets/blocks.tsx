@@ -18,8 +18,8 @@ export interface SheetProps {
   /** ผลพิจารณารอบล่าสุด */
   approvals?: ApprovalRecord[];
   officials?: Partial<Record<PositionKey, string>>;
-  /** ลายเซ็นนักศึกษา (PNG) ที่เลือกใส่ตอนยื่น — ไม่มี = เว้นช่องไว้เซ็นบนกระดาษ */
-  studentSignature?: string | null;
+  /** นักศึกษาเลือกลงชื่อออนไลน์ → เขียนชื่อ-สกุลในช่องลงชื่อ (false = เว้นไว้เซ็นบนกระดาษ) */
+  studentSigned?: boolean;
 }
 
 export const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));

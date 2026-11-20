@@ -4,7 +4,7 @@ import { LEVEL_LABEL } from '@csis/shared';
 import { COLLEGE, DirectorOrder, FinanceReceipt, Fill, Opinion, RequestNo, Row, Text, WrittenAt, fullNameOf, nameOnly, step, str, type SheetProps, SignFill } from '../blocks';
 
 /** คำร้อง ขอลาพักการเรียนและรักษาสภาพนักเรียน/นักศึกษา (สแกน p13) */
-export function LeaveSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
+export function LeaveSheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSigned }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   return (
     <article className="sheet compact" aria-label="คำร้องขอลาพักการเรียน">
@@ -32,7 +32,7 @@ export function LeaveSheet({ student: s, data: d, submittedAt, requestNo, approv
       </Row>
       <Text x={30.2} y={90}>ก่อนลงทะเบียนทุกครั้ง</Text>
       <Text x={36} y={101}>จึงเรียนมาเพื่อโปรดพิจารณา</Text>
-      <Row y={107.5} x={100.5} right={null}><span>ลงชื่อ</span><SignFill w={40} src={studentSignature} /><span>นักเรียน/นักศึกษา</span></Row>
+      <Row y={107.5} x={100.5} right={null}><span>ลงชื่อ</span><SignFill w={40} name={studentSigned ? `${s.firstName} ${s.lastName}` : undefined} /><span>นักเรียน/นักศึกษา</span></Row>
       <Text x={100.5} y={113.5} size={10.5} style={{ color: '#444' }}>({fullNameOf(s)})</Text>
 
       {/* ผู้ปกครองลงความเห็นบนกระดาษ */}

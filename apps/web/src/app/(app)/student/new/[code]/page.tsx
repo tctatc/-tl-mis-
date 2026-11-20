@@ -10,7 +10,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { FormFields } from '@/components/FormFields';
 import { FixedPreview, PreviewFrame } from '@/components/PreviewFrame';
-import { SignaturePad } from '@/components/SignaturePad';
 import { Alert, Button, Card, Field, Input, Spinner, cx } from '@/components/ui';
 import { ApiError, api, errorMessage } from '@/lib/api';
 import { useMe } from '@/lib/me';
@@ -39,18 +38,8 @@ function NewRequestForm() {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [openSame, setOpenSame] = useState<RequestSummary | null>(null);
   const [officials, setOfficials] = useState<Partial<Record<PositionKey, string>>>({});
-  // ลายเซ็น: ใส่ลายเซ็นที่บันทึกไว้ หรือเว้นว่างไว้เซ็นบนกระดาษ (null = ยังโหลดไม่เสร็จ)
-  const [saved, setSaved] = useState<string | null | undefined>(undefined);
-  const [sigMode, setSigMode] = useState<'sign' | 'blank' | null>(null);
-  const [drawing, setDrawing] = useState(false);
-  const [sigBusy, setSigBusy] = useState(false);
-  const [sigError, setSigError] = useState('');
-
-  useEffect(() => {
-    api.get<{ signature: string | null }>('/student/signature').then((r) => setSaved(r.signature)).catch(() => setSaved(null));
-  }, []);
-  // ค่าเริ่ม: มีลายเซ็นบันทึกไว้ → ใส่ให้ (แก้คำร้องที่ถูกส่งกลับ → ตามใบเดิม)
-  useEffect(() => { if (sigMode === null && saved !== undefined && !editId) setSigMode(saved ? 'sign' : 'blank'); }, [saved, sigMode, editId]);
+  // ช่องลงชื่อนักศึกษา: เขียนชื่อ-สกุลให้ (ลงชื่อออนไลน์) หรือเว้นว่างไว้เซ็นบนกระดาษ
+  const [sigMode, setSigMode] = useState<'sign' | 'blank'>('sign');
 
   useEffect(() => {
     api.get<Partial<Record<PositionKey, string>>>('/requests/officials').then(setOfficials).catch(() => undefined);
@@ -79,7 +68,7 @@ function NewRequestForm() {
           return;
         }
         setData(d.data as FormData);
-        setSigMode(d.studentSignature ? 'sign' : 'blank');
+        setSigMode(d.studentSigned ? 'sign' : 'blank');
         const last = [...d.approvals].reverse().find((a) => a.decision === 'return');
         setReturnedReason(last?.comment ?? '');
       })
@@ -131,11 +120,6 @@ function NewRequestForm() {
       }
       clean = result.data;
     }
-    if (sigMode === 'sign' && !saved) {
-      setSigError('วาดลายเซ็นก่อน หรือเลือก “เว้นว่าง เซ็นเองบนกระดาษ”');
-      document.getElementById('signature-section')?.scrollIntoView({ block: 'center' });
-      return;
-    }
     const useSignature = sigMode === 'sign';
     setBusy(true);
     try {
@@ -154,20 +138,8 @@ function NewRequestForm() {
   }
 
   const previewData = isGeneral ? (parsed?.success ? (parsed.data as unknown as FormData) : { ...data, other: g.other ?? '' }) : data;
-  const preview = sheetsFor(type.template, { student, data: previewData, officials, studentSignature: sigMode === 'sign' ? saved ?? null : null });
+  const preview = sheetsFor(type.template, { student, data: previewData, officials, studentSigned: sigMode === 'sign' });
 
-  async function saveSignature(png: string) {
-    setSigBusy(true); setSigError('');
-    try {
-      await api.put('/student/signature', { signature: png });
-      setSaved(png); setSigMode('sign'); setDrawing(false);
-    } catch (e) { setSigError(errorMessage(e)); } finally { setSigBusy(false); }
-  }
-  async function deleteSignature() {
-    if (!window.confirm('ลบลายเซ็นที่บันทึกไว้? คำร้องที่ยื่นไปแล้วยังมีลายเซ็นเหมือนเดิม')) return;
-    setSigBusy(true); setSigError('');
-    try { await api.del('/student/signature'); setSaved(null); setSigMode('blank'); } catch (e) { setSigError(errorMessage(e)); } finally { setSigBusy(false); }
-  }
 
   return (
     // จอใหญ่: ทั้งหน้าสูงเท่าจอ (จอ − แถบเมนู − ขอบบนล่าง) ตัวหน้าไม่เลื่อน ฝั่งซ้ายเลื่อนเอง ฝั่งขวานิ่ง
@@ -257,27 +229,15 @@ function NewRequestForm() {
           </Card>}
 
           <Card id="signature-section" className="grid gap-3 p-4 sm:p-5">
-            <h2 className="flex items-center gap-2 font-semibold"><PenLine className="size-4 text-brand" aria-hidden="true" /> ลายเซ็นในแบบฟอร์ม</h2>
-            <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="ลายเซ็นในแบบฟอร์ม">
-              {([['sign', 'ใส่ลายเซ็นของฉัน', 'ไม่ต้องพิมพ์ออกมาเซ็น'], ['blank', 'เว้นว่าง เซ็นเองบนกระดาษ', 'พิมพ์แบบฟอร์มแล้วเซ็นด้วยปากกา']] as const).map(([v, label, hint]) => (
+            <h2 className="flex items-center gap-2 font-semibold"><PenLine className="size-4 text-brand" aria-hidden="true" /> ช่องลงชื่อนักศึกษา</h2>
+            <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="ช่องลงชื่อนักศึกษา">
+              {([['sign', 'ลงชื่อด้วยชื่อของฉัน', `ระบบเขียน “${student.firstName} ${student.lastName}” ในช่องลงชื่อให้`], ['blank', 'เว้นว่าง เซ็นเองบนกระดาษ', 'พิมพ์แบบฟอร์มแล้วเซ็นด้วยปากกา']] as const).map(([v, label, hint]) => (
                 <label key={v} className={cx('flex min-h-14 cursor-pointer items-start gap-3 rounded-[var(--radius-control)] px-3 py-2.5 ring-1', sigMode === v ? 'bg-brand-soft ring-brand-border' : 'ring-line-strong hover:bg-sunken')}>
-                  <input type="radio" name="sig" className="mt-1 size-4 accent-[var(--color-brand)]" checked={sigMode === v} onChange={() => { setSigMode(v); setSigError(''); if (v === 'sign' && !saved) setDrawing(true); }} />
+                  <input type="radio" name="sig" className="mt-1 size-4 accent-[var(--color-brand)]" checked={sigMode === v} onChange={() => setSigMode(v)} />
                   <span><span className="block font-medium">{label}</span><span className="block text-sm text-ink-muted">{hint}</span></span>
                 </label>
               ))}
             </div>
-            {sigMode === 'sign' && (drawing || !saved ? (
-              <SignaturePad busy={sigBusy} onDone={(png) => void saveSignature(png)} onCancel={saved ? () => setDrawing(false) : () => { setDrawing(false); setSigMode('blank'); }} />
-            ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={saved} alt="ลายเซ็นที่บันทึกไว้" className="h-16 max-w-60 rounded-md bg-surface object-contain px-2 ring-1 ring-line" />
-                <Button type="button" variant="secondary" onClick={() => setDrawing(true)}>วาดใหม่</Button>
-                <Button type="button" variant="ghost" loading={sigBusy} onClick={() => void deleteSignature()}>ลบลายเซ็นที่บันทึกไว้</Button>
-              </div>
-            ))}
-            {sigMode === 'sign' && <p className="text-sm text-ink-muted">ลายเซ็นถูกบันทึกไว้ใช้ครั้งต่อไป และติดไปกับคำร้องนี้ ณ วันที่ยื่น · แสดงเฉพาะในคำร้องของคุณ</p>}
-            {sigError && <p className="text-sm text-danger" role="alert">{sigError}</p>}
           </Card>
 
           {type.bring && <Alert tone="info"><strong className="font-semibold">{isGeneral ? 'เตรียมไปรับเอกสาร' : 'เอกสารที่ต้องเตรียม'}:</strong> {type.bring}</Alert>}

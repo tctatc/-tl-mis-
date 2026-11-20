@@ -107,8 +107,8 @@ export interface RequestSummary {
 export interface RequestDetail extends RequestSummary {
   data: unknown;
   student: StudentSnapshot;
-  /** ลายเซ็นนักศึกษาที่ใส่ไว้ตอนยื่น (null = เว้นไว้เซ็นบนกระดาษ) */
-  studentSignature: string | null;
+  /** นักศึกษาลงชื่อออนไลน์ (ชื่อ-สกุลในช่องลงชื่อ) — false = เว้นไว้เซ็นบนกระดาษ */
+  studentSigned: boolean;
   approvals: ApprovalRecord[];
   history: StatusEvent[];
   /** ชื่อผู้ดำรงตำแหน่งปัจจุบัน ใช้พิมพ์ในวงเล็บใต้ช่องลงชื่อ */

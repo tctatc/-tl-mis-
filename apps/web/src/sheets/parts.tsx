@@ -108,15 +108,13 @@ export function ScaledSheet({ children, className, maxHeight }: { children: Reac
 }
 
 /**
- * ช่องลงชื่อของนักศึกษา: มีลายเซ็น → วางภาพลายเซ็นเหนือเส้นประ (ล้นขึ้นด้านบนได้เหมือนเซ็นจริง)
- * ไม่มี → เส้นประว่างให้เซ็นด้วยปากกา
+ * ช่องลงชื่อของนักศึกษา: ลงชื่อออนไลน์ → เขียนชื่อ-สกุลด้วยลายมือ (หมึกน้ำเงิน) บนเส้นประ
+ * ไม่ได้เลือก → เส้นประว่างให้เซ็นด้วยปากกา
  */
-export function SignFill({ w, src }: { w: number; src?: string | null | undefined }) {
+export function SignFill({ w, name }: { w: number; name?: string | undefined }) {
   return (
-    <span className="sheet-fill relative" style={{ width: `${w}mm`, overflow: 'visible' }}>
-      {'\u00a0'}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {src && <img src={src} alt="ลายเซ็นนักศึกษา" className="pointer-events-none absolute left-1/2 max-w-none -translate-x-1/2" style={{ bottom: '0.3mm', height: '10mm', maxWidth: `${w + 10}mm`, objectFit: 'contain' }} />}
+    <span className="sheet-fill sheet-sign" style={{ width: `${w}mm` }} aria-label={name ? `ลงชื่อออนไลน์ ${name}` : undefined}>
+      {name || '\u00a0'}
     </span>
   );
 }

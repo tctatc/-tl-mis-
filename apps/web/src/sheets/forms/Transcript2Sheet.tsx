@@ -3,7 +3,7 @@
 import { COLLEGE, DirectorOrder, FinanceReceipt, Fill, Opinion, Paren, RequestNo, Row, Text, WrittenAt, nameOnly, step, str, SignFill, type SheetProps } from '../blocks';
 
 /** คำร้อง ขอ Transcript ชุดที่ 2 (สแกน p10) */
-export function Transcript2Sheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSignature }: SheetProps) {
+export function Transcript2Sheet({ student: s, data: d, submittedAt, requestNo, approvals, officials = {}, studentSigned }: SheetProps) {
   const a = (k: string) => step(approvals, k);
   return (
     <article className="sheet compact" aria-label="คำร้องขอ Transcript ชุดที่ 2">
@@ -21,7 +21,7 @@ export function Transcript2Sheet({ student: s, data: d, submittedAt, requestNo, 
       <Row y={96.5} x={28.3} right={80}><span>เนื่องจาก สำเนา รบ. ชุดที่ 1</span><Fill grow left>{str(d.reason)}</Fill></Row>
       <Text x={39.5} y={106}>จึงเรียนมาเพื่อโปรดดำเนินการให้ด้วย&nbsp; จักขอบคุณยิ่ง</Text>
       <Text x={122} y={112}>ขอแสดงความนับถือ</Text>
-      <Row y={124.5} x={110} right={null}><span>ลงชื่อ</span><SignFill w={52} src={studentSignature} /><span>นักศึกษา</span></Row>
+      <Row y={124.5} x={110} right={null}><span>ลงชื่อ</span><SignFill w={52} name={studentSigned ? `${s.firstName} ${s.lastName}` : undefined} /><span>นักศึกษา</span></Row>
 
       <Opinion x={25} y={140} w={68} title="1. ความเห็นหัวหน้างานทะเบียน" a={a('registrar')} holder={officials.registrar_head} gap={6.8} />
       <FinanceReceipt x={25} y={175} w={68} title="2.  หัวหน้างานการเงิน" a={a('finance')} holder={officials.finance_head} gap={6.8} />

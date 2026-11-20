@@ -10,4 +10,3 @@ export * from './password.js';
 export * from './academicImport.js';
 export * from './grading.js';
 export * from './groups.js';
-export * from './signature.js';

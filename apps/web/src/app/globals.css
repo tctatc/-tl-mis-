@@ -133,3 +133,7 @@ select:not([multiple]):disabled { opacity: 0.6; }
   .print-doc .print-page { margin: 0 !important; break-after: page; }
   .print-doc .print-page:last-child { break-after: auto; }
 }
+
+/* ชื่อนักศึกษาที่ลงชื่อออนไลน์: ลายมือ หมึกน้ำเงิน ไม่ย่อ (ถ้ายาวให้ล้นเส้นได้เหมือนเขียนจริง) */
+.sheet-fill.sheet-sign { font-family: var(--font-sign), var(--font-form); font-size: 1.2em; line-height: 1; overflow: visible; color: #0b2a8a; }
+@media print { .sheet-fill.sheet-sign { color: #0b2a8a !important; } }

@@ -34,7 +34,7 @@ export default function PrintRequest() {
   const template = (getRequestType(d.typeCode)?.template ?? 'general') as TemplateKey;
   const pages = sheetsFor(template, {
     student: d.student, data: d.data as FormData, submittedAt: d.submittedAt, requestNo: d.requestNo,
-    approvals: d.approvals.filter((a) => a.round === d.round), officials: d.officials, studentSignature: d.studentSignature,
+    approvals: d.approvals.filter((a) => a.round === d.round), officials: d.officials, studentSigned: d.studentSigned,
   });
 
   return (
