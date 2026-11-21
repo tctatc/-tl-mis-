@@ -2,7 +2,7 @@
 
 import { ROLES, formatThaiDateTime, passwordProblem, randomPassword, type Role } from '@csis/shared';
 import { Eye, EyeOff, KeyRound, Lock, Plus, RefreshCw, Search, UserCog } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { PageHeader } from '@/components/academic';
 import { Dialog } from '@/components/Dialog';
 import { Alert, Button, Card, Field, Input, Spinner, cx } from '@/components/ui';
@@ -78,6 +78,11 @@ export default function UsersPage() {
   // บัญชีที่ระงับซ่อนไว้ก่อน ไม่ให้รก — ติ๊กดูได้เมื่ออยากเปิดใช้กลับ
   const [showSuspended, setShowSuspended] = useState(false);
   const [page, setPage] = useState(0);
+  // ลิงก์จากหน้าครูและบุคลากร: ?q=ชื่อผู้ใช้ (รวมบัญชีที่ระงับ เพราะบัญชีที่นำเข้าใหม่ระงับไว้ก่อน)
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get('q');
+    if (v) { setQ(v); setQuery(v); setShowSuspended(true); }
+  }, []);
   // ปกติแสดงเฉพาะครู/เจ้าหน้าที่ — ค้นด้วยรหัสนักศึกษา/ชื่อได้ เพื่อปลดล็อกบัญชีนักเรียนที่กรอกรหัสผิด
   const params = new URLSearchParams({ page: String(page), ...(query ? {} : { staff: '1' }), status: showSuspended ? 'SUSPENDED' : 'ACTIVE', ...(query ? { q: query } : {}), ...(role ? { role } : {}) });
   const { data, error, reload } = useApi<List>(`/admin/users?${params}`);

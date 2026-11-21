@@ -22,12 +22,14 @@ import { RateLimitGuard } from './common/rate-limit.js';
 import { PrismaService } from './common/prisma.service.js';
 import { DashboardController } from './dashboard/dashboard.controller.js';
 import { DashboardService } from './dashboard/dashboard.service.js';
+import { StaffController } from './staff/staff.controller.js';
+import { StaffService } from './staff/staff.service.js';
 import { HealthController } from './health.controller.js';
 import { RequestsController } from './requests/requests.controller.js';
 import { RequestsService } from './requests/requests.service.js';
 
 @Module({
-  controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController],
+  controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController, StaffController],
   providers: [
     PrismaService,
     AuditService,
@@ -41,6 +43,7 @@ import { RequestsService } from './requests/requests.service.js';
     AcademicImportService,
     AcademicAdminService,
     DashboardService,
+    StaffService,
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: SessionGuard },
   ],

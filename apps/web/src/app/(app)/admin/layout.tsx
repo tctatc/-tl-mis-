@@ -10,6 +10,7 @@ const TABS = [
   { href: '/admin', label: 'ภาพรวม', exact: true },
   { href: '/admin/dashboard/students', label: 'สถิตินักเรียน' },
   { href: '/admin/dashboard/requests', label: 'สถิติคำร้อง' },
+  { href: '/admin/staff', label: 'ครูและบุคลากร' },
   { href: '/admin/users', label: 'ผู้ใช้งาน' },
   { href: '/admin/students', label: 'นักเรียน' },
   { href: '/admin/positions', label: 'ผู้ลงนาม / หัวหน้าสาขา' },

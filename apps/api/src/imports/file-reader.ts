@@ -91,7 +91,7 @@ export async function readRows(buf: Buffer, fileName: string): Promise<{ all: Ce
 export async function readSheet(buf: Buffer, fileName: string): Promise<ParsedSheet> {
   const { all, sheetName, encoding } = await readRows(buf, fileName);
   const { headers, rows, headerRowNo } = splitHeader(all);
-  if (rows.length === 0) throw new BadRequestException('มีแต่หัวตาราง ไม่มีข้อมูลนักเรียน');
+  if (rows.length === 0) throw new BadRequestException('มีแต่หัวตาราง ไม่มีข้อมูล');
   if (rows.length > IMPORT_LIMITS.maxRows) throw new BadRequestException(`ข้อมูลเกิน ${IMPORT_LIMITS.maxRows.toLocaleString()} แถว — แบ่งไฟล์ตามแผนก/รุ่นแล้วนำเข้าทีละไฟล์`);
   return { headers, rows, headerRowNo, sheetName, ...(encoding ? { encoding } : {}) };
 }
@@ -143,6 +143,14 @@ export const ACADEMIC_TEMPLATES = {
     sample: [
       ['67201010001', 'นายทดลอง ระบบดี', '20204-2102', 'การพัฒนาโปรแกรมบนอุปกรณ์เคลื่อนที่', '3', '3.5'],
       ['67201010001', 'นายทดลอง ระบบดี', '20204-2103', 'การจัดการเครือข่าย', '3', '4'],
+    ],
+  },
+  staff: {
+    name: 'ครูและบุคลากร',
+    headers: ['รหัสบุคลากร', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'ตำแหน่ง', 'ประเภทบุคลากร', 'แผนกวิชา', 'สาขาวิชา', 'สถานะ', 'เบอร์โทรศัพท์', 'อีเมล'],
+    sample: [
+      ['T001', 'นาย', 'วิชัย', 'ช่างคิด', 'ครู คศ.2', 'ข้าราชการครู', 'ประเภทวิชาอุตสาหกรรมดิจิทัลและเทคโนโลยีสารสนเทศ', 'เทคโนโลยีสารสนเทศ', 'ปฏิบัติงาน', '0812345678', ''],
+      ['T002', 'นางสาว', 'สุดา', 'ตั้งใจ', 'เจ้าหน้าที่งานทะเบียน', 'ลูกจ้างชั่วคราว', '', '', 'ปฏิบัติงาน', '', ''],
     ],
   },
 } as const;

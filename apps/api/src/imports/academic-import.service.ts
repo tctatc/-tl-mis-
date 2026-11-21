@@ -1,9 +1,11 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import {
-  ACADEMIC_FIELDS, groupMatches, guessAcademicMapping, normalizeGrade, normalizeGroup, normalizeOrgName, orgKey, parseDay, parseLevel,
-  parseTerm, parseTime, parseTimeRange, parseTpn, parseYearLevel, termLabel,
+  ACADEMIC_FIELDS, KIND_NEEDS_TERM, STAFF_KIND_LABEL, WORK_STATUS_LABEL, groupMatches, guessAcademicMapping, normalizeGrade, normalizeGroup, normalizeOrgName, normalizePrefix, orgKey,
+  parseDay, parseLevel, parseStaffKind, parseTerm, parseTime, parseTimeRange, parseTpn, parseWorkStatus, parseYearLevel, splitThaiName, staffUsername, termLabel,
   type AcademicKind, type AcademicMapping, type Level,
 } from '@csis/shared';
+import { hashPassword } from '../auth/auth.service.js';
 import type { AuthUser } from '../auth/decorators.js';
 import { AuditService } from '../common/audit.service.js';
 import { PrismaService, type Tx } from '../common/prisma.service.js';
@@ -26,6 +28,7 @@ const SAMPLE_COLUMNS: Record<AcademicKind, string[]> = {
   plan: ['สาขา', 'ปี/ภาค', 'รหัสวิชา', 'ชื่อวิชา', 'ท-ป-น', 'หมวด'],
   schedule: ['ห้อง', 'วัน', 'เวลา', 'รหัสวิชา', 'ชื่อวิชา', 'ห้องเรียน', 'ครู'],
   grade: ['รหัสนักศึกษา', 'ชื่อ', 'ห้อง', 'รหัสวิชา', 'หน่วยกิต', 'เกรด'],
+  staff: ['รหัส', 'ชื่อ-นามสกุล', 'ครู/บุคลากร', 'ตำแหน่ง', 'แผนก / สาขา', 'สถานะ'],
 };
 const DAY_TH = ['', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์', 'อาทิตย์'];
 
@@ -107,11 +110,14 @@ export class AcademicImportService {
       }
     }
     for (const i of Object.values(input.mapping)) if (i < 0 || i >= headers.length) throw new BadRequestException('คอลัมน์ไม่ถูกต้อง');
+    if (kind === 'staff' && input.mapping.name === undefined && input.mapping.firstName === undefined) {
+      throw new BadRequestException('ต้องเลือกคอลัมน์ “ชื่อ-นามสกุล” หรือ “ชื่อ”');
+    }
     if (kind === 'schedule' && input.mapping.time === undefined && (input.mapping.startTime === undefined || input.mapping.endTime === undefined)) {
       throw new BadRequestException('ต้องเลือกคอลัมน์ “เวลา (ช่วง)” หรือ “เวลาเริ่ม” + “เวลาเลิก”');
     }
     let term: { id: string; year: number; term: number } | null = null;
-    if (kind !== 'plan') {
+    if (KIND_NEEDS_TERM[kind]) {
       if (!input.termId) throw new BadRequestException('เลือกภาคเรียน');
       const found = await this.prisma.academicTerm.findUnique({ where: { id: input.termId } });
       if (!found) throw new BadRequestException('ไม่พบภาคเรียน');
@@ -123,6 +129,7 @@ export class AcademicImportService {
     const raw = job.rawRows as Cell[][];
     const headerRowNo = ((job.summary as { headerRowNo?: number } | null)?.headerRowNo) ?? 1;
     const rows = kind === 'plan' ? await this.previewPlan(raw, input.mapping, headerRowNo)
+      : kind === 'staff' ? await this.previewStaff(raw, input.mapping, headerRowNo)
       : kind === 'schedule' ? await this.previewSchedule(raw, input.mapping, headerRowNo, term!)
       : await this.previewGrade(raw, input.mapping, headerRowNo, term!);
 
@@ -247,6 +254,80 @@ export class AcademicImportService {
     });
   }
 
+  /** ครู/บุคลากร: จับคู่ด้วยรหัสบุคลากร (มีแล้ว = อัปเดต) · แผนก/สาขาไม่พบ = เตือน แต่ยังนำเข้าได้ */
+  private async previewStaff(raw: Cell[][], m: AcademicMapping, headerRowNo: number): Promise<Row[]> {
+    const t = (r: Cell[], f: string) => (m[f] !== undefined ? txt(r[m[f]!]) : '');
+    const [departments, programs, profiles, users] = await Promise.all([
+      this.prisma.department.findMany(),
+      this.prisma.program.findMany({ include: { department: true } }),
+      this.prisma.staffProfile.findMany({ select: { staffCode: true, userId: true } }),
+      this.prisma.user.findMany({ where: { deletedAt: null }, select: { id: true, username: true, staffProfile: { select: { staffCode: true } }, roles: { select: { role: true } } } }),
+    ]);
+    const deptByKey = new Map(departments.map((d) => [orgKey(d.name), d]));
+    const progByKey = new Map<string, typeof programs>();
+    for (const p of programs) progByKey.set(orgKey(p.name), [...(progByKey.get(orgKey(p.name)) ?? []), p]);
+    const profileByCode = new Map(profiles.filter((p) => p.staffCode).map((p) => [p.staffCode!.toLowerCase(), p.userId]));
+    const userByName = new Map(users.map((u) => [u.username, u]));
+    const seen = new Map<string, number>();
+    return raw.map((r, i): Row => {
+      const rowNo = headerRowNo + 1 + i;
+      const issues: Issue[] = [];
+      const err = (column: string, message: string) => issues.push({ column, message, level: 'error' });
+      const warn = (column: string, message: string) => issues.push({ column, message, level: 'warning' });
+      const staffCode = txt(r[m.staffCode!]).replace(/\s+/g, '');
+      if (!staffCode) err('staffCode', 'ไม่มีรหัสบุคลากร');
+      else if (staffCode.length > 40) err('staffCode', 'รหัสยาวเกิน 40 ตัว');
+      const k = staffCode.toLowerCase();
+      const dup = seen.get(k); if (k && dup) err('staffCode', `รหัสซ้ำกับแถวที่ ${dup}`); else if (k) seen.set(k, rowNo);
+
+      const split = m.name !== undefined ? splitThaiName(t(r, 'name')) : { prefix: '', firstName: '', lastName: '' };
+      const prefix = (t(r, 'prefix') ? normalizePrefix(t(r, 'prefix')) : split.prefix).slice(0, 20);
+      const firstName = (t(r, 'firstName') || split.firstName).slice(0, 80);
+      const lastName = (t(r, 'lastName') || split.lastName).slice(0, 80);
+      if (!firstName) err(m.name !== undefined ? 'name' : 'firstName', 'ไม่มีชื่อ');
+
+      const position = t(r, 'position').slice(0, 100);
+      const kind = parseStaffKind(t(r, 'kind'), position);
+      const statusText = t(r, 'status');
+      const workStatus = parseWorkStatus(statusText);
+      if (!workStatus) err('status', `ไม่รู้จักสถานะ "${statusText}" (ใช้ ปฏิบัติงาน / ลา / ย้าย / เกษียณ / ลาออก)`);
+      const email = t(r, 'email');
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) err('email', `อีเมล "${email}" ไม่ถูกต้อง`);
+      const phone = t(r, 'phone').replace(/[^\d-]/g, '').slice(0, 15);
+
+      // แผนก: ชื่อตรงกับแผนก/ประเภทวิชาในระบบ หรือชื่อตรงกับสาขา (ใช้แผนกของสาขานั้น)
+      const deptText = t(r, 'department'); const progText = t(r, 'program');
+      let departmentId: string | null = null; let programId: string | null = null; let orgLabel = '';
+      const progHit = progText ? progByKey.get(orgKey(progText))?.[0] : undefined;
+      if (progText && !progHit) warn('program', `ไม่พบสาขา "${normalizeOrgName(progText)}" ในระบบ — บันทึกโดยไม่ระบุสาขา`);
+      if (progHit) { programId = progHit.id; departmentId = progHit.departmentId; orgLabel = `${progHit.department.name} / ${progHit.name}`; }
+      if (deptText) {
+        const d = deptByKey.get(orgKey(deptText));
+        const viaProgram = d ? undefined : progByKey.get(orgKey(deptText))?.[0];
+        if (d) { departmentId = d.id; orgLabel = progHit ? `${d.name} / ${progHit.name}` : d.name; }
+        else if (viaProgram) { departmentId = viaProgram.departmentId; programId ??= viaProgram.id; orgLabel = `${viaProgram.department.name} / ${viaProgram.name}`; }
+        else warn('department', `ไม่พบแผนก "${normalizeOrgName(deptText)}" ในระบบ — บันทึกโดยไม่ระบุแผนก`);
+      }
+
+      // มีโปรไฟล์รหัสนี้แล้ว = อัปเดต · ชื่อผู้ใช้ตรงกับบัญชีเดิมที่ยังไม่มีโปรไฟล์ = ผูกกับบัญชีนั้น
+      const existingUserId = profileByCode.get(k);
+      const username = staffUsername(staffCode);
+      const sameUser = username ? userByName.get(username) : undefined;
+      if (!existingUserId && sameUser) {
+        if (sameUser.roles.some((x) => x.role === 'STUDENT')) err('staffCode', `ชื่อผู้ใช้ "${username}" เป็นบัญชีนักเรียน — ใช้รหัสอื่น`);
+        else if (sameUser.staffProfile) err('staffCode', `ชื่อผู้ใช้ "${username}" ผูกกับบุคลากรรหัส ${sameUser.staffProfile.staffCode ?? '-'} แล้ว`);
+        else warn('staffCode', `ผูกกับบัญชีผู้ใช้ "${username}" ที่มีอยู่แล้ว`);
+      }
+      const action = issues.some((x) => x.level === 'error') ? 'error' : existingUserId || sameUser ? 'update' : 'create';
+      return {
+        rowNo, action, key: staffCode, issues,
+        data: { staffCode, username, linkUserId: existingUserId ?? sameUser?.id ?? null, prefix, firstName, lastName, kind, positionTitle: position, employment: t(r, 'employment').slice(0, 100),
+          departmentId, programId, workStatus, phone, email: email.slice(0, 120), groupLabel: orgLabel || 'ไม่ระบุแผนก', groupNote: '', groupWarn: !orgLabel },
+        cells: [staffCode, `${prefix}${firstName} ${lastName}`.trim(), STAFF_KIND_LABEL[kind], position, orgLabel || '–', workStatus ? WORK_STATUS_LABEL[workStatus] : statusText],
+      };
+    });
+  }
+
   private async previewGrade(raw: Cell[][], m: AcademicMapping, headerRowNo: number, term: { id: string }): Promise<Row[]> {
     const codes = raw.map((r) => code(txt(r[m.studentCode!])));
     const students = new Map((await this.prisma.student.findMany({ where: { studentCode: { in: codes } }, include: { program: true } })).map((s) => [s.studentCode, s]));
@@ -298,7 +379,7 @@ export class AcademicImportService {
     try {
       const rows = (await this.prisma.importJobRow.findMany({ where: { jobId: id, action: { in: ['create', 'update'] } }, orderBy: { rowNo: 'asc' } })).map((r) => r.data as Record<string, unknown>);
       const termId = (job.options as { termId?: string } | null)?.termId ?? null;
-      const result = kind === 'plan' ? await this.commitPlan(rows) : kind === 'schedule' ? await this.commitSchedule(rows, termId!) : await this.commitGrade(rows, termId!);
+      const result = kind === 'plan' ? await this.commitPlan(rows) : kind === 'staff' ? await this.commitStaff(rows) : kind === 'schedule' ? await this.commitSchedule(rows, termId!) : await this.commitGrade(rows, termId!);
       await this.prisma.importJob.update({ where: { id }, data: { status: 'committed', committedAt: new Date(), summary: { ...(job.summary as object), result } } });
       await this.audit.log({ actorUserId: actor.id, action: `import.${kind}`, entity: 'import', entityId: id, after: { fileName: job.fileName, ...result }, ip });
       return result;
@@ -306,6 +387,41 @@ export class AcademicImportService {
       await this.prisma.importJob.update({ where: { id }, data: { status: 'failed', summary: { ...(job.summary as object), error: (e as Error).message.slice(0, 500) } } });
       throw e instanceof ConflictException ? e : new BadRequestException(`นำเข้าไม่สำเร็จ ไม่มีข้อมูลถูกบันทึก: ${(e as Error).message.slice(0, 200)}`);
     }
+  }
+
+  /** บัญชีใหม่ของบุคลากรเริ่มเป็น "ระงับ" — ผู้ดูแลเปิดใช้และตั้งรหัสชั่วคราวให้ทีละคนจากหน้าผู้ใช้งาน */
+  private async commitStaff(rows: Record<string, unknown>[]) {
+    const lockedHash = await hashPassword(randomBytes(24).toString('base64url'));
+    return this.prisma.$transaction(async (tx) => {
+      let created = 0; let updated = 0;
+      const taken = new Set((await tx.user.findMany({ select: { username: true } })).map((u) => u.username));
+      for (const r of rows) {
+        const profile = {
+          staffCode: String(r.staffCode), prefix: String(r.prefix ?? ''), firstName: String(r.firstName), lastName: String(r.lastName ?? ''),
+          kind: r.kind as 'teacher' | 'support', positionTitle: String(r.positionTitle ?? ''), employment: String(r.employment ?? ''),
+          departmentId: (r.departmentId as string | null) ?? null, programId: (r.programId as string | null) ?? null,
+          workStatus: r.workStatus as 'active', phone: String(r.phone ?? ''), email: String(r.email ?? ''),
+        };
+        const displayName = `${profile.prefix}${profile.firstName} ${profile.lastName}`.trim();
+        let userId = (r.linkUserId as string | null) ?? null;
+        if (userId) {
+          await tx.staffProfile.upsert({ where: { userId }, create: { userId, ...profile }, update: profile });
+          await tx.user.update({ where: { id: userId }, data: { displayName } });
+          updated++;
+          continue;
+        }
+        let username = (r.username as string | null) ?? `staff-${profile.staffCode.toLowerCase().replace(/[^a-z0-9]/g, '') || randomBytes(3).toString('hex')}`;
+        for (let n = 2; taken.has(username); n++) username = `${(r.username as string | null) ?? 'staff'}-${n}`;
+        taken.add(username);
+        const user = await tx.user.create({
+          data: { username, displayName, passwordHash: lockedHash, status: 'SUSPENDED', mustChangePassword: true,
+            ...(profile.kind === 'teacher' ? { roles: { create: [{ role: 'TEACHER' }] } } : {}) },
+        });
+        await tx.staffProfile.create({ data: { userId: user.id, ...profile } });
+        created++;
+      }
+      return { created, updated };
+    }, { timeout: 120_000 });
   }
 
   private async upsertSubject(tx: Tx, codeStr: string, name: unknown, nums: unknown) {

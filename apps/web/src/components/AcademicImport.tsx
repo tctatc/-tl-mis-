@@ -1,6 +1,6 @@
 'use client';
 
-import { ACADEMIC_FIELDS, type AcademicKind, type AcademicMapping } from '@csis/shared';
+import { ACADEMIC_FIELDS, KIND_NEEDS_TERM, type AcademicKind, type AcademicMapping } from '@csis/shared';
 import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Upload, UploadCloud } from 'lucide-react';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Stat } from './academic';
@@ -23,16 +23,29 @@ const META: Record<AcademicKind, { name: string; note: string; groupTitle: strin
     done: (r) => `บันทึก ${r.saved} วิชา ใน ${r.programs} สาขา` },
   schedule: { name: 'ตารางเรียน', note: 'ผูกกับห้อง (สาขา + ชั้นปี + ห้อง) · ระบบลงทะเบียนวิชาให้นักเรียนทุกคนในห้องเอง · ตารางเดิมของวิชาในห้องนั้นจะถูกแทนที่', groupTitle: 'แยกตามห้อง',
     done: (r) => `บันทึก ${r.sessions} คาบ ${r.sections} วิชา · ลงทะเบียนให้นักเรียน ${r.students} คน` },
+  staff: { name: 'ครูและบุคลากร', note: 'จับคู่ด้วยรหัสบุคลากร (มีอยู่แล้ว = อัปเดต) · บัญชีใหม่จะ “ระงับ” ไว้ก่อน ผู้ดูแลเปิดใช้และตั้งรหัสผ่านให้ทีละคนที่หน้าผู้ใช้งาน', groupTitle: 'แยกตามแผนก — ตรวจว่าแผนกถูกต้อง',
+    done: (r) => `เพิ่มใหม่ ${r.created} คน · อัปเดต ${r.updated} คน`, },
   grade: { name: 'ผลการเรียน', note: 'ผูกกับรหัสนักศึกษา · นำเข้าแล้วนักเรียนยังไม่เห็น จนกว่าจะกด “ประกาศผล”', groupTitle: 'แยกตามห้อง',
     done: (r) => `บันทึกเกรด ${r.saved} รายการ (ยังไม่ประกาศ)${r.unchanged ? ` · เหมือนเดิม ${r.unchanged}` : ''}` },
 };
+/** รายงานข้อผิดพลาดเป็น CSV (มี BOM ให้ Excel อ่านภาษาไทยถูก) — เอาไปแก้ในไฟล์ต้นฉบับแล้วนำเข้าใหม่ */
+export function downloadIssues(issues: { rowNo: number; key: string; columnLabel: string; message: string; level: 'error' | 'warning' }[], name: string) {
+  const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const rows = [['แถวในไฟล์', 'รหัส', 'คอลัมน์', 'ระดับ', 'ปัญหา'], ...issues.map((i) => [String(i.rowNo), i.key, i.columnLabel, i.level === 'error' ? 'ผิดพลาด (ไม่นำเข้า)' : 'คำเตือน', i.message])];
+  const blob = new Blob([`\uFEFF${rows.map((r) => r.map(esc).join(',')).join('\r\n')}\r\n`], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `รายงานข้อผิดพลาด-${name.replace(/\.(xlsx|csv|txt)$/i, '')}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 const cellText = (c: Cell) => (c === null ? '' : typeof c === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(c) ? c.slice(0, 10) : String(c));
 
 /** นำเข้าแผนการเรียน/ตารางเรียน/ผลการเรียน: เลือกไฟล์ → จับคู่คอลัมน์ → ตรวจ → ยืนยัน */
 export function AcademicImport({ kind, terms, defaultTermId, onCommitted, onClose }: { kind: AcademicKind; terms: Term[]; defaultTermId?: string; onCommitted: () => void; onClose: () => void }) {
   const meta = META[kind];
   const fields = ACADEMIC_FIELDS[kind];
-  const needsTerm = kind !== 'plan';
+  const needsTerm = KIND_NEEDS_TERM[kind];
   const [step, setStep] = useState<'upload' | 'map' | 'review' | 'done'>('upload');
   const [up, setUp] = useState<Uploaded | null>(null);
   const [mapping, setMapping] = useState<AcademicMapping>({});
@@ -138,7 +151,7 @@ export function AcademicImport({ kind, terms, defaultTermId, onCommitted, onClos
           </section>
           {preview.groups.length > 0 && (
             <Card className="overflow-hidden">
-              <h3 className="border-b border-line/80 px-4 py-2.5 font-semibold">{meta.groupTitle} — ตรวจว่าตรงกับนักเรียน</h3>
+              <h3 className="border-b border-line/80 px-4 py-2.5 font-semibold">{meta.groupTitle.includes('ตรวจ') ? meta.groupTitle : `${meta.groupTitle} — ตรวจว่าตรงกับนักเรียน`}</h3>
               <ul className="divide-y divide-line/70">
                 {preview.groups.map((g) => (
                   <li key={g.label} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-[15px]">
@@ -155,6 +168,7 @@ export function AcademicImport({ kind, terms, defaultTermId, onCommitted, onClos
               <div role="tablist" className="flex gap-1 border-b border-line/80 px-3 py-2">
                 <button role="tab" aria-selected={show === 'error'} onClick={() => setShow('error')} className={cx('min-h-10 rounded-md px-3 text-[15px]', show === 'error' ? 'bg-danger-soft font-medium text-danger' : 'text-ink-muted hover:bg-sunken')}>ผิดพลาด ({preview.issues.filter((i) => i.level === 'error').length})</button>
                 <button role="tab" aria-selected={show === 'warning'} onClick={() => setShow('warning')} className={cx('min-h-10 rounded-md px-3 text-[15px]', show === 'warning' ? 'bg-warn-soft font-medium text-warn' : 'text-ink-muted hover:bg-sunken')}>คำเตือน ({preview.warnings})</button>
+                <button type="button" onClick={() => downloadIssues(preview.issues, `${meta.name}-${up?.fileName ?? 'ไฟล์'}`)} className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-[15px] font-medium text-brand hover:bg-brand-soft"><Download className="size-4" aria-hidden="true" />ดาวน์โหลดรายงานข้อผิดพลาด</button>
               </div>
               <div className="max-h-72 overflow-auto">
                 <table className="w-full text-[15px]">

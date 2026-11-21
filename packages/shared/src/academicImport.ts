@@ -5,7 +5,9 @@
 import { GRADES } from './academic.js';
 import { parseLevel } from './studentImport.js';
 
-export type AcademicKind = 'plan' | 'schedule' | 'grade';
+export type AcademicKind = 'plan' | 'schedule' | 'grade' | 'staff';
+/** ประเภทที่ต้องเลือกภาคเรียนก่อนนำเข้า */
+export const KIND_NEEDS_TERM: Record<AcademicKind, boolean> = { plan: false, schedule: true, grade: true, staff: false };
 export interface FieldInfo { label: string; required?: boolean; hint?: string }
 
 export const ACADEMIC_FIELDS: Record<AcademicKind, Record<string, FieldInfo>> = {
@@ -46,6 +48,21 @@ export const ACADEMIC_FIELDS: Record<AcademicKind, Record<string, FieldInfo>> = 
     grade: { label: 'ผลการเรียน (เกรด)', required: true },
     studentName: { label: 'ชื่อนักเรียน (ไว้ตรวจ)', hint: 'ไม่บันทึก ใช้เตือนถ้าชื่อไม่ตรงกับรหัส' },
   },
+  staff: {
+    staffCode: { label: 'รหัสบุคลากร', required: true, hint: 'ไม่ซ้ำกัน ใช้เป็นชื่อผู้ใช้เข้าระบบ' },
+    name: { label: 'ชื่อ-นามสกุล (รวมช่องเดียว)', hint: 'มีคำนำหน้าได้ เช่น นายสมชาย ใจดี' },
+    prefix: { label: 'คำนำหน้า' },
+    firstName: { label: 'ชื่อ' },
+    lastName: { label: 'นามสกุล' },
+    kind: { label: 'ครู / บุคลากรสนับสนุน', hint: 'ไม่มีก็ได้ ระบบดูจากตำแหน่ง' },
+    position: { label: 'ตำแหน่ง', hint: 'เช่น ครู คศ.2, ครูผู้ช่วย, เจ้าหน้าที่ธุรการ' },
+    employment: { label: 'ประเภทบุคลากร', hint: 'เช่น ข้าราชการครู, พนักงานราชการ, ครูอัตราจ้าง' },
+    department: { label: 'แผนกวิชา / งาน' },
+    program: { label: 'สาขาวิชา' },
+    status: { label: 'สถานะการปฏิบัติงาน', hint: 'ไม่มี = ปฏิบัติงาน' },
+    phone: { label: 'เบอร์โทรศัพท์' },
+    email: { label: 'อีเมล' },
+  },
 };
 
 export type AcademicMapping = Record<string, number>;
@@ -85,7 +102,50 @@ const SYN: Record<AcademicKind, [string, string[]][]> = {
     ['grade', ['ผลการเรียน', 'ระดับผลการเรียน', 'เกรด', 'ผล', 'grade']],
     ['tpn', ['ทปน', 'tpn']], ['credits', ['หน่วยกิต', 'credit', 'credits']],
   ],
+  staff: [
+    ['staffCode', ['รหัสบุคลากร', 'รหัสครู', 'รหัสประจำตัว', 'เลขประจำตัว', 'รหัส', 'staffcode', 'code', 'username']],
+    ['name', ['ชื่อนามสกุล', 'ชื่อสกุล', 'ชื่อเต็ม', 'fullname']],
+    ['prefix', ['คำนำหน้าชื่อ', 'คำนำหน้า', 'prefix', 'title']],
+    ['firstName', ['ชื่อ', 'firstname']],
+    ['lastName', ['นามสกุล', 'สกุล', 'lastname', 'surname']],
+    ['employment', ['ประเภทบุคลากร', 'ประเภทการจ้าง', 'สถานภาพการจ้าง', 'ประเภท', 'employment']],
+    ['kind', ['ครูบุคลากร', 'กลุ่มบุคลากร', 'kind']],
+    ['position', ['ตำแหน่ง', 'position']],
+    ['department', ['แผนกวิชา', 'แผนก', 'ฝ่าย', 'งาน', 'department']],
+    ['program', ['สาขาวิชา', 'สาขางาน', 'สาขา', 'program']],
+    ['status', ['สถานะการปฏิบัติงาน', 'สถานะ', 'status']],
+    ['phone', ['เบอร์โทรศัพท์', 'โทรศัพท์', 'เบอร์โทร', 'มือถือ', 'phone', 'tel']],
+    ['email', ['อีเมล', 'อีเมล์', 'email', 'e-mail']],
+  ],
 };
+
+// ---------------- ครูและบุคลากร ----------------
+export const STAFF_KIND_LABEL = { teacher: 'ครู', support: 'บุคลากรสนับสนุน' } as const;
+export type StaffKind = keyof typeof STAFF_KIND_LABEL;
+export const WORK_STATUS_LABEL = { active: 'ปฏิบัติงาน', on_leave: 'ลา (ศึกษาต่อ/ลาป่วย/ลาคลอด)', transferred: 'ย้ายไปที่อื่น', retired: 'เกษียณ', resigned: 'ลาออก' } as const;
+export type WorkStatus = keyof typeof WORK_STATUS_LABEL;
+/** ครู/บุคลากร จากคอลัมน์ประเภท หรือเดาจากตำแหน่ง (มีคำว่าครู/อาจารย์ = ครู) */
+export function parseStaffKind(kindText: string, position: string): StaffKind {
+  const k = kindText.trim();
+  if (/สนับสนุน|เจ้าหน้าที่|ธุรการ|support|staff/i.test(k)) return 'support';
+  if (/ครู|อาจารย์|teacher/i.test(k)) return 'teacher';
+  if (/ครู|อาจารย์|รองผู้อำนวยการ|ผู้อำนวยการ/.test(position)) return 'teacher';
+  return position.trim() ? 'support' : 'teacher';
+}
+export function parseWorkStatus(v: string): WorkStatus | null {
+  const s = v.trim();
+  if (!s || /ปฏิบัติ|ปกติ|active|ทำงาน|ปัจจุบัน/i.test(s)) return 'active';
+  if (/ลาออก|resign/i.test(s)) return 'resigned';
+  if (/เกษียณ|retire/i.test(s)) return 'retired';
+  if (/ย้าย|โอน|transfer/i.test(s)) return 'transferred';
+  if (/ลา|leave/i.test(s)) return 'on_leave';
+  return null;
+}
+/** รหัสบุคลากร → ชื่อผู้ใช้ (a-z 0-9 . _ -) หรือ null ถ้าแปลงไม่ได้ (เช่นเป็นภาษาไทย) */
+export function staffUsername(code: string): string | null {
+  const u = code.trim().toLowerCase().replace(/\s+/g, '');
+  return /^[a-z0-9._-]{3,40}$/.test(u) ? u : null;
+}
 
 const squash = (s: string) => s.toLowerCase().replace(/[\s._\-/()]+/g, '');
 

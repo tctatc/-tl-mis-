@@ -75,6 +75,7 @@ model User {
   positions Position[]
   sessions  Session[]
   student   Student?   @relation("StudentAccount")
+  staffProfile StaffProfile?
   advisees  Student[]  @relation("Advisor")
 
   @@map("users")
@@ -133,6 +134,7 @@ model Department {
   id       String    @id @default(uuid()) @db.Uuid
   name     String    @unique
   programs Program[]
+  staff    StaffProfile[]
 
   @@map("departments")
 }
@@ -150,6 +152,7 @@ model Program {
   curriculums  Curriculum[]
   sections     CourseSection[]
   classGroups  ClassGroup[]
+  staff        StaffProfile[]
 
   @@unique([departmentId, name, level])
   @@map("programs")
@@ -668,4 +671,46 @@ model ImportJobRow {
 
   @@index([jobId, rowNo])
   @@map("import_job_rows")
+}
+
+enum StaffKind {
+  teacher
+  support
+}
+
+enum StaffWorkStatus {
+  active
+  on_leave
+  transferred
+  retired
+  resigned
+}
+
+/// ข้อมูลครูและบุคลากร (แยกจากบัญชีผู้ใช้ — บัญชีเดิมที่ไม่มีโปรไฟล์ยังใช้งานได้ตามปกติ)
+model StaffProfile {
+  userId       String          @id @db.Uuid
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// รหัสบุคลากรของวิทยาลัย (ไม่ซ้ำ ใช้จับคู่ตอนนำเข้า)
+  staffCode    String?         @unique
+  prefix       String          @default("")
+  firstName    String
+  lastName     String          @default("")
+  kind         StaffKind       @default(teacher)
+  /// ตำแหน่ง เช่น ครู คศ.2, ครูผู้ช่วย, เจ้าหน้าที่งานทะเบียน
+  positionTitle String         @default("")
+  /// ประเภทบุคลากร เช่น ข้าราชการครู, พนักงานราชการ, ครูอัตราจ้าง
+  employment   String          @default("")
+  departmentId String?         @db.Uuid
+  department   Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  programId    String?         @db.Uuid
+  program      Program?        @relation(fields: [programId], references: [id], onDelete: SetNull)
+  workStatus   StaffWorkStatus @default(active)
+  phone        String          @default("")
+  email        String          @default("")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([departmentId])
+  @@index([programId])
+  @@map("staff_profiles")
 }

@@ -19,9 +19,11 @@ const requireAcademic = (u: AuthUser) => {
   if (!u.roles.some((r) => r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'REGISTRAR' || r === 'ASSESSMENT_STAFF')) throw new ForbiddenException('เฉพาะผู้ดูแลระบบ งานทะเบียน และงานวัดผล');
 };
 /** นำเข้า: แผน/ตาราง = งานทะเบียน · ผลการเรียนย้อนหลัง = งานทะเบียนหรืองานวัดผล */
-const requireImport = (u: AuthUser, kind: AcademicKind) => (kind === 'grade' ? requireAcademic(u) : requireRegistry(u));
+/** ครูและบุคลากร = ผู้ดูแลระบบเท่านั้น (สร้างบัญชีผู้ใช้) */
+const requireAdmin = (u: AuthUser) => { if (!u.roles.some((r) => r === 'SUPER_ADMIN' || r === 'ADMIN')) throw new ForbiddenException('เฉพาะผู้ดูแลระบบ'); };
+const requireImport = (u: AuthUser, kind: AcademicKind) => (kind === 'grade' ? requireAcademic(u) : kind === 'staff' ? requireAdmin(u) : requireRegistry(u));
 const kindOf = (k: string): AcademicKind => {
-  if (k !== 'plan' && k !== 'schedule' && k !== 'grade') throw new BadRequestException('ไม่รู้จักประเภทข้อมูล');
+  if (k !== 'plan' && k !== 'schedule' && k !== 'grade' && k !== 'staff') throw new BadRequestException('ไม่รู้จักประเภทข้อมูล');
   return k;
 };
 const filter = z.object({

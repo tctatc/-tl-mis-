@@ -42,7 +42,7 @@ export function Field({ label, hint, error, children, counter }: { label: string
   const errorId = `${id}-error`;
   const describedBy = [hint ? hintId : '', error ? errorId : ''].filter(Boolean).join(' ') || undefined;
   return (
-    <div className="grid gap-1.5">
+    <div className="grid content-start gap-1.5">
       <div className="flex items-baseline justify-between gap-3">
         <label htmlFor={id} className="text-[15px] font-medium">{label}</label>
         {counter && <span className="text-xs tabular-nums text-ink-muted">{counter}</span>}
