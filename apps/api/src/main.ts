@@ -15,8 +15,10 @@ async function bootstrap() {
   app.enableShutdownHooks();
   // ไม่เปิด CORS: เบราว์เซอร์เรียกผ่าน /api ของเว็บเดียวกันเท่านั้น
   const port = Number(process.env.PORT ?? 4010);
-  await app.listen(port, '127.0.0.1');
-  console.log(`CSIS API http://127.0.0.1:${port}/api`);
+  // เครื่องพัฒนา/เซิร์ฟเวอร์เอง: ฟังเฉพาะเครื่องนี้ (มีเว็บเป็น proxy ข้างหน้า) · บน Vercel แพลตฟอร์มจัดการเครือข่ายเอง
+  const host = process.env.VERCEL ? undefined : (process.env.HOST ?? '127.0.0.1');
+  await (host ? app.listen(port, host) : app.listen(port));
+  console.log(`CSIS API :${port}/api`);
 }
 
 void bootstrap();
