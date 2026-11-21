@@ -1,0 +1,11 @@
+# ไม่อัปโหลดขึ้น Vercel: รหัสลับ, ไฟล์ build, ไฟล์ใหญ่ที่เว็บไม่ได้ใช้
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+apps/api/src/generated
+uploads
+docs
