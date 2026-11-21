@@ -207,7 +207,7 @@ export class AdminService {
       orderBy: [{ department: { name: 'asc' } }, { level: 'asc' }, { name: 'asc' }],
       include: { department: true, head: { select: { id: true, displayName: true } }, _count: { select: { students: true } } },
     });
-    return rows.map((p) => ({ id: p.id, name: p.name, level: p.level, department: p.department.name, headUserId: p.headUserId, headName: p.head?.displayName ?? null, students: p._count.students }));
+    return rows.map((p) => ({ id: p.id, name: p.name, level: p.level, department: p.department.name, departmentId: p.departmentId, headUserId: p.headUserId, headName: p.head?.displayName ?? null, students: p._count.students }));
   }
 
   async setProgramHead(actor: AuthUser, id: string, headUserId: string | null, ip: string) {
@@ -218,11 +218,12 @@ export class AdminService {
   }
 
   // ---------------- นักเรียน ----------------
-  async listStudents(q: { q?: string; programId?: string; status?: string; yearLevel?: number; page: number }) {
+  async listStudents(q: { q?: string; programId?: string; departmentId?: string; level?: 'pvc' | 'pvs'; status?: string; yearLevel?: number; page: number }) {
     const term = q.q?.trim();
     const where: Prisma.StudentWhereInput = {
       deletedAt: null,
       ...(q.programId ? { programId: q.programId } : {}),
+      ...(q.departmentId || q.level ? { program: { ...(q.departmentId ? { departmentId: q.departmentId } : {}), ...(q.level ? { level: q.level } : {}) } } : {}),
       ...(q.status ? { status: q.status as Prisma.StudentWhereInput['status'] } : {}),
       ...(q.yearLevel ? { yearLevel: q.yearLevel } : {}),
       ...(term ? { OR: [{ studentCode: { contains: term } }, { firstName: { contains: term } }, { lastName: { contains: term } }] } : {}),

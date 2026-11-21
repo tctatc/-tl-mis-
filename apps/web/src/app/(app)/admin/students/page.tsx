@@ -13,7 +13,7 @@ import { useApi } from '@/lib/useApi';
 
 interface Row { id: string; studentCode: string; name: string; level: 'pvc' | 'pvs'; program: string; department: string; yearLevel: number; groupNo: string; status: string; advisor: string; accountStatus: string }
 interface List { items: Row[]; total: number; pageSize: number }
-interface Program { id: string; name: string; level: 'pvc' | 'pvs'; department: string }
+interface Program { id: string; name: string; level: 'pvc' | 'pvs'; department: string; departmentId: string }
 interface Staff { id: string; displayName: string; username: string }
 type StudentForm = {
   studentCode: string; prefix: string; firstName: string; lastName: string; birthDate: string; programId: string; yearLevel: number; groupNo: string;
@@ -47,10 +47,13 @@ function StudentsAdmin() {
 
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
-  const [programId, setProgramId] = useState('');
-  const [status, setStatus] = useState('');
+  // ตัวกรองเริ่มต้นมาจากลิงก์ในแดชบอร์ด เช่น ?level=pvc&yearLevel=2&status=studying
+  const [programId, setProgramId] = useState(params0.get('programId') ?? '');
+  const [status, setStatus] = useState(params0.get('status') ?? '');
+  const [extra, setExtra] = useState(() => ({ level: params0.get('level') ?? '', yearLevel: params0.get('yearLevel') ?? '', departmentId: params0.get('departmentId') ?? '' }));
   const [page, setPage] = useState(0);
-  const params = new URLSearchParams({ page: String(page), ...(query ? { q: query } : {}), ...(programId ? { programId } : {}), ...(status ? { status } : {}) });
+  const params = new URLSearchParams({ page: String(page), ...(query ? { q: query } : {}), ...(programId ? { programId } : {}), ...(status ? { status } : {}),
+    ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v)) });
   const { data, error, reload } = useApi<List>(`/admin/students?${params}`);
   const programs = useApi<Program[]>('/admin/programs').data ?? [];
   const staff = useApi<Staff[]>('/admin/staff-options').data ?? [];
@@ -89,6 +92,15 @@ function StudentsAdmin() {
             {Object.entries(STUDENT_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <Button type="submit" variant="secondary">ค้นหา</Button>
+          {(extra.level || extra.yearLevel || extra.departmentId) && (
+            <p className="flex w-full flex-wrap items-center gap-2 text-[15px]">
+              <span className="text-ink-muted">กรองเพิ่ม:</span>
+              <span className="rounded-full bg-brand-soft px-3 py-1 text-brand">
+                {[extra.level && LEVEL_LABEL[extra.level as 'pvc' | 'pvs'], extra.yearLevel && `ชั้นปี ${extra.yearLevel}`, extra.departmentId && `แผนก${programs.find((x) => x.departmentId === extra.departmentId)?.department ?? ''}`].filter(Boolean).join(' · ')}
+              </span>
+              <button type="button" className="text-brand underline underline-offset-2" onClick={() => { setExtra({ level: '', yearLevel: '', departmentId: '' }); setPage(0); }}>ล้าง</button>
+            </p>
+          )}
         </form>
         {error ? <div className="p-4"><Alert>{error}</Alert></div> : !data ? <Spinner /> : data.items.length === 0 ? <p className="p-6 text-center text-ink-muted">ไม่พบนักเรียน</p> : (
           <div className="overflow-x-auto">

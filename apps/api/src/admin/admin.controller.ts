@@ -106,7 +106,7 @@ export class AdminController {
   @Get('students')
   students(@CurrentUser() u: AuthUser, @Query() q: unknown) {
     requireRegistry(u);
-    return this.admin.listStudents(parseOr400(z.object({ q: z.string().max(60).optional(), programId: z.string().uuid().optional(), status: z.string().max(20).optional(), yearLevel: z.coerce.number().int().min(1).max(5).optional(), page }), q));
+    return this.admin.listStudents(parseOr400(z.object({ q: z.string().max(60).optional(), programId: z.string().uuid().optional(), departmentId: z.string().uuid().optional(), level: z.enum(['pvc', 'pvs']).optional(), status: z.string().max(20).optional(), yearLevel: z.coerce.number().int().min(1).max(5).optional(), page }), q));
   }
 
   @Get('students/:id')

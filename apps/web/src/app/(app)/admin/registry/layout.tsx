@@ -10,6 +10,7 @@ const SUB = [
   { href: '/admin/registry/promotion', label: 'เลื่อนชั้น' },
   { href: '/admin/registry/graduation', label: 'สำเร็จการศึกษา' },
   { href: '/admin/students', label: 'ข้อมูลนักเรียน' },
+  { href: '/admin/dashboard/students', label: 'สถิติ' },
 ];
 
 /** งานทะเบียน (เมนูเดียวกับ ศธ.02): กลุ่มเรียน · เลื่อนชั้น · สำเร็จการศึกษา */
