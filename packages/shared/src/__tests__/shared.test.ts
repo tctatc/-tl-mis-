@@ -15,7 +15,7 @@ describe('thai dates', () => {
     expect(parseIsoDate('2003-11-01')).toEqual({ day: 1, month: 11, year: 2003 });
   });
   it('builds the DD/MM/YYYY default password from the spec example', () => {
-    expect(defaultStudentPassword('2003-11-01')).toBe('01/11/2003');
+    expect(defaultStudentPassword('2003-11-01')).toBe('01/11/2546');
   });
   it('rolls the academic year over in May', () => {
     expect(academicYearOf('2026-04-30T05:00:00Z')).toBe(2568);

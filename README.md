@@ -22,7 +22,7 @@ cd apps/api && npx prisma migrate dev && npm run build && SEED_DEMO=true npm run
 cd apps/web && npm run dev            # http://localhost:3010
 ```
 
-บัญชีทดลอง (เฉพาะ `SEED_DEMO=true`): นักศึกษา `67201010001` / `01/11/2008` (ใช้วันเกิดต่อได้ ตั้งค่า `STUDENT_FORCE_PASSWORD_CHANGE` ใน apps/api/.env) ·
+บัญชีทดลอง (เฉพาะ `SEED_DEMO=true`): นักศึกษา `67201010001` / `01/11/2551` (ใช้วันเกิดต่อได้ ตั้งค่า `STUDENT_FORCE_PASSWORD_CHANGE` ใน apps/api/.env) ·
 เจ้าหน้าที่ `registrar`, `deputy`, `director`, `teacher`, `admin` รหัส `Demo-2569`
 
 ## เมนูนักศึกษา

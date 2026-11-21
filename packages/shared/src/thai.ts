@@ -58,8 +58,15 @@ export function academicYearOf(iso: string | Date): number {
   return toBuddhistYear(p.month >= 5 ? p.year : p.year - 1);
 }
 
-/** รหัสผ่านเริ่มต้นของนักศึกษา = วันเกิดรูปแบบ DD/MM/YYYY (ปี ค.ศ. ตามข้อกำหนด) */
+/** รหัสผ่านเริ่มต้นของนักศึกษา = วันเกิดรูปแบบ DD/MM/YYYY ปี พ.ศ. เช่น 01/11/2551 */
 export function defaultStudentPassword(birthDate: string): string {
+  const p = parseIsoDate(birthDate);
+  if (!p) throw new Error('วันเกิดไม่ถูกต้อง');
+  return `${String(p.day).padStart(2, '0')}/${String(p.month).padStart(2, '0')}/${p.year + 543}`;
+}
+
+/** รูปแบบเดิม (ปี ค.ศ.) — ใช้แปลงบัญชีเก่าและกันไม่ให้ตั้งรหัสใหม่เป็นวันเกิด */
+export function legacyStudentPassword(birthDate: string): string {
   const p = parseIsoDate(birthDate);
   if (!p) throw new Error('วันเกิดไม่ถูกต้อง');
   return `${String(p.day).padStart(2, '0')}/${String(p.month).padStart(2, '0')}/${p.year}`;

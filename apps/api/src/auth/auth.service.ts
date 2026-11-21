@@ -1,6 +1,6 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
-import { defaultStudentPassword, type Me, type PositionKey, type Role, type StudentSnapshot } from '@csis/shared';
+import { defaultStudentPassword, legacyStudentPassword, type Me, type PositionKey, type Role, type StudentSnapshot } from '@csis/shared';
 import { AuditService } from '../common/audit.service.js';
 import { PrismaService } from '../common/prisma.service.js';
 import { loadStudentSnapshot } from '../common/student-snapshot.js';
@@ -82,7 +82,7 @@ export class AuthService {
     }
     if (current === next) throw new BadRequestException({ message: 'ต้องไม่ซ้ำรหัสเดิม', fields: { next: 'ต้องไม่ซ้ำรหัสเดิม' } });
     const birth = row.student?.birthDate?.toISOString().slice(0, 10);
-    const birthForms = birth ? [defaultStudentPassword(birth), birth, birth.replaceAll('-', '')] : [];
+    const birthForms = birth ? [defaultStudentPassword(birth), legacyStudentPassword(birth), birth, birth.replaceAll('-', '')] : [];
     if (birthForms.includes(next) || next.toLowerCase().includes(row.username.toLowerCase())) {
       throw new BadRequestException({ message: 'ห้ามใช้วันเกิดหรือรหัสนักศึกษาเป็นรหัสผ่าน', fields: { next: 'ห้ามใช้วันเกิดหรือรหัสนักศึกษาเป็นรหัสผ่าน' } });
     }

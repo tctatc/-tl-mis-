@@ -103,7 +103,7 @@ function LoginForm() {
                   <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" inputMode="text" autoCapitalize="none" spellCheck={false} required autoFocus />
                 )}
               </Field>
-              <Field label="รหัสผ่าน" hint="ครั้งแรก: วันเดือนปีเกิด (ค.ศ.) เช่น 01/11/2008" error={fields.password}>
+              <Field label="รหัสผ่าน" hint="ครั้งแรก: วันเดือนปีเกิด (พ.ศ.) เช่น 01/11/2551" error={fields.password}>
                 {({ id, describedBy, invalid }) => (
                   <div className="relative">
                     <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required className="pr-12" />

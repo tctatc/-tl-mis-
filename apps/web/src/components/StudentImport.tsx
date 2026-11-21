@@ -153,7 +153,7 @@ export function StudentImport({ initialFile, onCommitted, onClose }: { initialFi
           <h2 className="text-xl font-semibold">นำเข้าเรียบร้อย</h2>
           <p className="text-[15px]">เพิ่มใหม่ <strong className="tabular-nums">{done.created}</strong> คน · อัปเดต <strong className="tabular-nums">{done.updated}</strong> คน{done.skipped ? <> · ข้ามแถวที่ผิด <strong className="tabular-nums">{done.skipped}</strong> แถว</> : null}</p>
           {done.createdPrograms.length > 0 && <p className="text-sm text-ink-muted">สร้างสาขาใหม่: {done.createdPrograms.join(', ')}</p>}
-          <p className="text-sm text-ink-muted">นักเรียนใหม่เข้าสู่ระบบด้วยรหัสนักศึกษา + วันเกิด (DD/MM/YYYY ค.ศ.)</p>
+          <p className="text-sm text-ink-muted">นักเรียนใหม่เข้าสู่ระบบด้วยรหัสนักศึกษา + วันเกิด (วว/ดด/ปปปป พ.ศ. เช่น 01/11/2551)</p>
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={onClose}>ดูรายชื่อนักเรียน</Button>
             <Button variant="secondary" onClick={restart}>นำเข้าไฟล์อื่น</Button>
