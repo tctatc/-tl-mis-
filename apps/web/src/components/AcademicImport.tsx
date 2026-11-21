@@ -1,6 +1,6 @@
 'use client';
 
-import { ACADEMIC_FIELDS, KIND_NEEDS_TERM, type AcademicKind, type AcademicMapping } from '@csis/shared';
+import { ACADEMIC_FIELDS, KIND_NEEDS_TERM, formatThaiDateTime, type AcademicKind, type AcademicMapping } from '@csis/shared';
 import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Upload, UploadCloud } from 'lucide-react';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Stat } from './academic';
@@ -9,7 +9,7 @@ import { Alert, Button, Card, Spinner, cx } from './ui';
 import { api, errorMessage, uploadFile } from '@/lib/api';
 
 type Cell = string | number | null;
-interface Uploaded { jobId: string; fileName: string; headers: string[]; rowCount: number; headerRowNo: number; encoding: string | null; sample: Cell[][]; mapping: AcademicMapping }
+interface Uploaded { jobId: string; fileName: string; headers: string[]; rowCount: number; headerRowNo: number; encoding: string | null; sample: Cell[][]; mapping: AcademicMapping; previous: { at: string | null; by: string } | null }
 interface Preview {
   counts: { create: number; update: number; error: number }; warnings: number; term: string | null;
   groups: { label: string; count: number; note: string; warn: boolean }[];
@@ -28,6 +28,13 @@ const META: Record<AcademicKind, { name: string; note: string; groupTitle: strin
   grade: { name: 'ผลการเรียน', note: 'ผูกกับรหัสนักศึกษา · นำเข้าแล้วนักเรียนยังไม่เห็น จนกว่าจะกด “ประกาศผล”', groupTitle: 'แยกตามห้อง',
     done: (r) => `บันทึกเกรด ${r.saved} รายการ (ยังไม่ประกาศ)${r.unchanged ? ` · เหมือนเดิม ${r.unchanged}` : ''}` },
 };
+/** เตือนเมื่อไฟล์ชื่อเดียวกัน จำนวนแถวเท่ากัน เคยนำเข้าสำเร็จแล้ว (กันกดนำเข้าซ้ำโดยไม่ตั้งใจ) */
+export function RepeatWarning({ previous }: { previous: { at: string | null; by: string } }) {
+  return (
+    <Alert tone="warn">ไฟล์นี้ (ชื่อและจำนวนแถวเดียวกัน) เคยนำเข้าแล้ว{previous.at ? ` เมื่อ ${formatThaiDateTime(previous.at)}` : ''}{previous.by ? ` โดย ${previous.by}` : ''} — ถ้านำเข้าอีกครั้ง ข้อมูลเดิมจะถูกอัปเดตซ้ำ ตรวจให้แน่ใจว่าตั้งใจนำเข้าใหม่</Alert>
+  );
+}
+
 /** รายงานข้อผิดพลาดเป็น CSV (มี BOM ให้ Excel อ่านภาษาไทยถูก) — เอาไปแก้ในไฟล์ต้นฉบับแล้วนำเข้าใหม่ */
 export function downloadIssues(issues: { rowNo: number; key: string; columnLabel: string; message: string; level: 'error' | 'warning' }[], name: string) {
   const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
@@ -106,6 +113,7 @@ export function AcademicImport({ kind, terms, defaultTermId, onCommitted, onClos
             </div>
             <Button variant="ghost" onClick={restart} icon={<ArrowLeft className="size-4" aria-hidden="true" />}>เลือกไฟล์ใหม่</Button>
           </div>
+          {up.previous && <RepeatWarning previous={up.previous} />}
           {needsTerm && (
             <label className="flex flex-wrap items-center gap-2 text-[15px]">
               <span className="font-medium">ภาคเรียนของข้อมูลนี้</span>

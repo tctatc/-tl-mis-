@@ -10,6 +10,7 @@ import { PrismaService } from '../common/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { RegistryService } from '../registry/registry.service.js';
 import { readSheet, type Cell } from './file-reader.js';
+import { previousImport } from './history.js';
 
 export type ImportMode = 'upsert' | 'insert' | 'update';
 interface RowResult { rowNo: number; action: 'create' | 'update' | 'error'; data: ImportedStudent & { programKey: string; advisorUserId: string | null }; issues: RowIssue[] }
@@ -46,6 +47,7 @@ export class StudentImportService {
     return {
       jobId: job.id, fileName: job.fileName, headers: sheet.headers, rowCount: sheet.rows.length, headerRowNo: sheet.headerRowNo,
       encoding: sheet.encoding ?? null, sample: sheet.rows.slice(0, 5), mapping: guessMapping(sheet.headers), currentYear: await this.currentYear(),
+      previous: await previousImport(this.prisma, 'student', job.fileName, sheet.rows.length),
     };
   }
 

@@ -4,6 +4,7 @@ import { StudentAcademicController } from './academic/student-academic.controlle
 import { StudentAcademicService } from './academic/student-academic.service.js';
 import { AdminController } from './admin/admin.controller.js';
 import { AdminService } from './admin/admin.service.js';
+import { ImportHistoryController } from './imports/history.js';
 import { ImportsController } from './imports/imports.controller.js';
 import { StudentImportService } from './imports/student-import.service.js';
 import { AcademicAdminController } from './academic/academic-admin.controller.js';
@@ -29,7 +30,7 @@ import { RequestsController } from './requests/requests.controller.js';
 import { RequestsService } from './requests/requests.service.js';
 
 @Module({
-  controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController, StaffController],
+  controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController, StaffController, ImportHistoryController],
   providers: [
     PrismaService,
     AuditService,

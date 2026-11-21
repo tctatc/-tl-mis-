@@ -3,6 +3,7 @@
 import { IMPORT_FIELDS, LEVEL_LABEL, formatThaiDateTime, type ImportField, type ImportMapping, type Level } from '@csis/shared';
 import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Upload, UploadCloud } from 'lucide-react';
 import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { RepeatWarning } from './AcademicImport';
 import { Stat } from './academic';
 import { Dialog } from './Dialog';
 import { Alert, Button, Card, Spinner, cx } from './ui';
@@ -10,7 +11,7 @@ import { api, errorMessage, uploadFile } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 
 type Cell = string | number | null;
-interface Uploaded { jobId: string; fileName: string; headers: string[]; rowCount: number; headerRowNo: number; encoding: string | null; sample: Cell[][]; mapping: ImportMapping; currentYear: number }
+interface Uploaded { jobId: string; fileName: string; headers: string[]; rowCount: number; headerRowNo: number; encoding: string | null; sample: Cell[][]; mapping: ImportMapping; currentYear: number; previous: { at: string | null; by: string } | null }
 interface Issue { rowNo: number; studentCode: string; column: string; columnLabel: string; message: string; level: 'error' | 'warning' }
 interface Group { department: string; level: Level | null; program: string; byEntry: Record<string, number>; total: number; isNew: boolean }
 interface Preview {
@@ -98,6 +99,7 @@ export function StudentImport({ initialFile, onCommitted, onClose }: { initialFi
               <p className="text-sm text-ink-muted">{uploaded.rowCount.toLocaleString('th-TH')} แถว · หัวตารางอยู่แถวที่ {uploaded.headerRowNo}{uploaded.encoding ? ` · อ่านภาษาไทยแบบ ${uploaded.encoding}` : ''}</p>
             </div>
             <Button variant="ghost" onClick={restart} icon={<ArrowLeft className="size-4" aria-hidden="true" />}>เลือกไฟล์ใหม่</Button>
+            {uploaded.previous && <div className="w-full"><RepeatWarning previous={uploaded.previous} /></div>}
           </div>
           <div>
             <h2 className="font-semibold">จับคู่คอลัมน์</h2>

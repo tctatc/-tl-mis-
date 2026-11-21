@@ -10,6 +10,7 @@ const SUB = [
   { href: '/admin/registry/promotion', label: 'เลื่อนชั้น' },
   { href: '/admin/registry/graduation', label: 'สำเร็จการศึกษา' },
   { href: '/admin/students', label: 'ข้อมูลนักเรียน' },
+  { href: '/admin/import', label: 'นำเข้าข้อมูล' },
   { href: '/admin/dashboard/students', label: 'สถิติ' },
 ];
 

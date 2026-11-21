@@ -11,6 +11,7 @@ import { AuditService } from '../common/audit.service.js';
 import { PrismaService, type Tx } from '../common/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { readSheet, type Cell } from './file-reader.js';
+import { previousImport } from './history.js';
 
 const LV: Record<Level, string> = { pvc: 'ปวช.', pvs: 'ปวส.' };
 type Issue = { column: string; message: string; level: 'error' | 'warning' };
@@ -42,7 +43,7 @@ export class AcademicImportService {
     const job = await this.prisma.importJob.create({
       data: { kind, fileName: name.slice(0, 200), createdById: actor.id, headers: sheet.headers, rawRows: sheet.rows as Prisma.InputJsonValue, total: sheet.rows.length, summary: { headerRowNo: sheet.headerRowNo, encoding: sheet.encoding ?? null } },
     });
-    return { jobId: job.id, fileName: job.fileName, headers: sheet.headers, rowCount: sheet.rows.length, headerRowNo: sheet.headerRowNo, encoding: sheet.encoding ?? null, sample: sheet.rows.slice(0, 5), mapping: guessAcademicMapping(kind, sheet.headers) };
+    return { jobId: job.id, fileName: job.fileName, headers: sheet.headers, rowCount: sheet.rows.length, headerRowNo: sheet.headerRowNo, encoding: sheet.encoding ?? null, sample: sheet.rows.slice(0, 5), mapping: guessAcademicMapping(kind, sheet.headers), previous: await previousImport(this.prisma, kind, job.fileName, sheet.rows.length) };
   }
 
   private async job(id: string, kind: AcademicKind, actor: AuthUser) {
