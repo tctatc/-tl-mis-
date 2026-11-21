@@ -14,6 +14,7 @@ import { Alert, Button, Card, Input, Spinner, Textarea, cx } from '@/components/
 import { api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { Labeled, selectCls } from '../shared';
+import { useConfirm } from '@/components/feedback';
 
 type Filter = 'all' | 'noTeacher' | SectionGradeStatus;
 const FILTERS: Filter[] = ['all', 'submitted', 'returned', 'none', 'draft', 'approved', 'published', 'noTeacher'];
@@ -172,6 +173,7 @@ function BulkDialog({ action, rows, onClose, onDone }: { action: 'approve' | 'pu
 interface Change { id: string; at: string; studentCode: string; name: string; fromGrade: string; toGrade: string; reason: string; requestNo: string | null; by: string }
 
 function SectionDialog({ id, teachers, onClose, onChanged }: { id: string; teachers: { id: string; name: string }[]; onClose: () => void; onChanged: (msg: string) => void }) {
+  const confirm = useConfirm();
   const d = useApi<TeachSectionDetail & { teacherUserId?: string | null }>(`/admin/grading/sections/${id}`);
   const board = d.data;
   const records = useApi<Record<string, string>>(board && (board.status === 'approved' || board.status === 'published') ? `/admin/grading/sections/${id}/records` : null);
@@ -278,10 +280,10 @@ function SectionDialog({ id, teachers, onClose, onChanged }: { id: string; teach
                 <Button onClick={() => setMode('approve')} icon={<CheckCircle2 className="size-4" aria-hidden="true" />}>อนุมัติผลการเรียน</Button>
               </>}
               {s.status === 'approved' && <>
-                <Button variant="secondary" loading={busy} onClick={() => { if (window.confirm('ยกเลิกการอนุมัติ? วิชานี้จะกลับไปเป็น "ส่งแล้ว รอตรวจ"')) void run(`/admin/grading/sections/${id}/unapprove`, {}, 'ยกเลิกอนุมัติแล้ว'); }}>ยกเลิกอนุมัติ</Button>
+                <Button variant="secondary" loading={busy} onClick={() => void confirm({ title: 'ยกเลิกการอนุมัติ?', message: 'วิชานี้จะกลับไปเป็น “ส่งแล้ว รอตรวจ”', confirmLabel: 'ยกเลิกการอนุมัติ', tone: 'danger' }).then((ok) => { if (ok) void run(`/admin/grading/sections/${id}/unapprove`, {}, 'ยกเลิกอนุมัติแล้ว'); })}>ยกเลิกอนุมัติ</Button>
                 <Button onClick={() => setMode('publish')} icon={<Megaphone className="size-4" aria-hidden="true" />}>ประกาศผลการเรียน</Button>
               </>}
-              {s.status === 'published' && <Button variant="secondary" loading={busy} onClick={() => { if (window.confirm('ยกเลิกประกาศ? นักเรียนจะไม่เห็นเกรดวิชานี้จนกว่าจะประกาศใหม่')) void run(`/admin/grading/sections/${id}/unpublish`, {}, 'ยกเลิกประกาศแล้ว'); }}>ยกเลิกประกาศ</Button>}
+              {s.status === 'published' && <Button variant="secondary" loading={busy} onClick={() => void confirm({ title: 'ยกเลิกประกาศผล?', message: 'นักเรียนจะไม่เห็นเกรดวิชานี้จนกว่าจะประกาศใหม่', confirmLabel: 'ยกเลิกประกาศ', tone: 'danger' }).then((ok) => { if (ok) void run(`/admin/grading/sections/${id}/unpublish`, {}, 'ยกเลิกประกาศแล้ว'); })}>ยกเลิกประกาศ</Button>}
               {(s.status === 'none' || s.status === 'draft' || s.status === 'returned') && <p className="text-[15px] text-ink-muted">รอครูผู้สอนกรอกและยืนยันส่งผล</p>}
             </div>
           )}

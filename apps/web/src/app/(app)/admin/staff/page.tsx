@@ -1,6 +1,6 @@
 'use client';
 
-import { LEVEL_LABEL, STAFF_KIND_LABEL, WORK_STATUS_LABEL, formatThaiDateTime, type StaffKind, type WorkStatus } from '@csis/shared';
+import { LEVEL_LABEL, STAFF_KIND_LABEL, WORK_STATUS_LABEL, formatThaiDateTime, splitThaiName, type StaffKind, type WorkStatus } from '@csis/shared';
 import { BookOpen, Briefcase, FileSpreadsheet, PauseCircle, Search, UserCog, UserRound, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -8,6 +8,7 @@ import { EmptyState, PageHeader } from '@/components/academic';
 import { AcademicImport } from '@/components/AcademicImport';
 import { BarList, Panel, StatLink } from '@/components/charts';
 import { Dialog } from '@/components/Dialog';
+import { useToast } from '@/components/feedback';
 import { Alert, Button, Field, Input, Spinner, cx } from '@/components/ui';
 import { ApiError, api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
@@ -174,14 +175,15 @@ export default function StaffPage() {
 
 function StaffDetail({ id, programs, departments, onSaved }: { id: string; programs: Program[]; departments: [string, string][]; onSaved: () => void }) {
   const { data, error, reload } = useApi<Detail>(`/admin/staff/${id}`);
+  const toast = useToast();
   const [form, setForm] = useState<Profile | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ tone: 'ok' | 'danger'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!data) return;
-    const [first = '', ...rest] = data.displayName.split(' ');
-    setForm(data.profile ?? { staffCode: null, prefix: '', firstName: first, lastName: rest.join(' '), kind: data.roles.includes('TEACHER') ? 'teacher' : 'support', positionTitle: '', employment: '', departmentId: null, programId: null, workStatus: 'active', phone: '', email: '' });
+    const n = splitThaiName(data.displayName);
+    setForm(data.profile ?? { staffCode: null, prefix: n.prefix, firstName: n.firstName, lastName: n.lastName, kind: data.roles.includes('TEACHER') ? 'teacher' : 'support', positionTitle: '', employment: '', departmentId: null, programId: null, workStatus: 'active', phone: '', email: '' });
   }, [data]);
   if (error) return <Alert>{error}</Alert>;
   if (!data || !form) return <Spinner />;
@@ -191,7 +193,7 @@ function StaffDetail({ id, programs, departments, onSaved }: { id: string; progr
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setErrors({}); setMsg(null);
-    try { await api.put(`/admin/staff/${id}`, form); setMsg({ tone: 'ok', text: 'บันทึกแล้ว' }); onSaved(); await reload(); }
+    try { await api.put(`/admin/staff/${id}`, form); setMsg(null); toast.ok(`บันทึกข้อมูลของ ${form?.firstName ?? ""} ${form?.lastName ?? ""}`.trim() + " แล้ว"); onSaved(); await reload(); }
     catch (err) { if (err instanceof ApiError) setErrors(err.fields); setMsg({ tone: 'danger', text: errorMessage(err) }); }
     finally { setBusy(false); }
   }

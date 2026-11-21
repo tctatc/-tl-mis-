@@ -10,6 +10,7 @@ import { Alert, Button, Card, Spinner, cx } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { Labeled, selectCls } from '../../academic/shared';
+import { useConfirm } from '@/components/feedback';
 
 interface Candidate {
   id: string; studentCode: string; name: string; status: string; graduationDate: string | null; hasCurriculum: boolean;
@@ -18,6 +19,7 @@ interface Candidate {
 interface Result { group: { id: string; code: string; label: string; isFinalYear: boolean }; students: Candidate[] }
 
 export default function GraduationPage() {
+  const ask = useConfirm();
   const groups = useApi<ClassGroupRow[]>('/admin/registry/groups?active=true');
   const finals = (groups.data ?? []).filter((g) => g.yearLevel >= finalYear(g.level));
   const [groupId, setGroupId] = useState('');
@@ -36,8 +38,8 @@ export default function GraduationPage() {
   const toggle = (id: string) => setPicked((c) => { const n = new Set(c); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   async function approve() {
-    const extra = notReadyPicked ? `\n\nมี ${notReadyPicked} คนที่ระบบตรวจว่ายังไม่ครบ — แน่ใจว่าตรวจกับเอกสารแล้ว?` : '';
-    if (!window.confirm(`อนุมัติสำเร็จการศึกษา ${picked.size} คน ลงวันที่ ${thaiDate(date)}?${extra}`)) return;
+    const extra = notReadyPicked ? `มี ${notReadyPicked} คนที่ระบบตรวจว่ายังไม่ครบ — แน่ใจว่าตรวจกับเอกสารแล้ว` : 'ควรตรวจรายชื่อกับ ศธ.02 ก่อนอนุมัติ';
+    if (!(await ask({ title: `อนุมัติสำเร็จการศึกษา ${picked.size} คน ลงวันที่ ${thaiDate(date)}?`, message: extra, confirmLabel: 'อนุมัติสำเร็จการศึกษา', ...(notReadyPicked ? { tone: 'danger' as const } : {}) }))) return;
     setBusy(true); setMsg(null);
     try {
       const r = await api.post<{ graduated: number }>('/admin/registry/graduation', { studentIds: [...picked], date });
@@ -45,7 +47,7 @@ export default function GraduationPage() {
     } catch (e) { setMsg({ tone: 'danger', text: errorMessage(e) }); } finally { setBusy(false); }
   }
   async function undo(s: Candidate) {
-    if (!window.confirm(`ยกเลิกการอนุมัติจบของ ${s.name}? สถานะจะกลับเป็น "กำลังศึกษา"`)) return;
+    if (!(await ask({ title: `ยกเลิกการอนุมัติจบของ ${s.name}?`, message: 'สถานะจะกลับเป็น “กำลังศึกษา”', confirmLabel: 'ยกเลิกการอนุมัติ', tone: 'danger' }))) return;
     setBusy(true); setMsg(null);
     try { await api.post(`/admin/registry/graduation/${s.id}/undo`); setMsg({ tone: 'ok', text: `ยกเลิกการอนุมัติจบของ ${s.name} แล้ว` }); await data.reload(); }
     catch (e) { setMsg({ tone: 'danger', text: errorMessage(e) }); } finally { setBusy(false); }

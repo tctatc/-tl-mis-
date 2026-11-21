@@ -13,6 +13,7 @@ import { Alert, Button, Card, Field, Spinner, StatusBadge, Textarea, cx } from '
 import { ApiError, api, errorMessage } from '@/lib/api';
 import { useMe } from '@/lib/me';
 import { sheetsFor } from '@/sheets';
+import { useConfirm } from '@/components/feedback';
 
 const sheetCount = (t: string) => (t === 'transfer' ? 2 : 1);
 const QUICK_COMMENTS = ['ตรวจสอบแล้ว ข้อมูลถูกต้อง', 'เห็นควรอนุมัติ', 'เอกสารไม่ครบ'];
@@ -26,6 +27,7 @@ const STEP_COMMENTS: Record<string, string[]> = {
 };
 
 function Detail() {
+  const ask = useConfirm();
   const { id } = useParams<{ id: string }>();
   const justSent = useSearchParams().get('sent') === '1';
   const { me } = useMe();
@@ -76,7 +78,7 @@ function Detail() {
   }
 
   async function cancel() {
-    if (!window.confirm('ยกเลิกคำร้องนี้? ยกเลิกแล้วต้องยื่นใหม่')) return;
+    if (!(await ask({ title: 'ยกเลิกคำร้องนี้?', message: 'ยกเลิกแล้วต้องยื่นใหม่ตั้งแต่ต้น', confirmLabel: 'ยกเลิกคำร้อง', cancelLabel: 'ไม่ยกเลิก', tone: 'danger' }))) return;
     setBusy('cancel');
     try {
       await api.post(`/requests/${id}/cancel`);

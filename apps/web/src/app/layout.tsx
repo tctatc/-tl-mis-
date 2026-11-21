@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Charm, IBM_Plex_Sans_Thai, Sarabun } from 'next/font/google';
+import { FeedbackProvider } from '@/components/feedback';
 import { ServiceWorker } from '@/components/ServiceWorker';
 import './globals.css';
 
@@ -23,7 +24,7 @@ export const viewport: Viewport = { themeColor: '#5c0f1a', width: 'device-width'
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th" className={`${plex.variable} ${sarabun.variable} ${charm.variable}`}>
-      <body className="min-h-dvh">{children}<ServiceWorker /></body>
+      <body className="min-h-dvh"><FeedbackProvider>{children}</FeedbackProvider><ServiceWorker /></body>
     </html>
   );
 }

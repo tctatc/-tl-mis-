@@ -10,6 +10,7 @@ import { ApiError, api, errorMessage } from '@/lib/api';
 import { useMe } from '@/lib/me';
 import { useApi } from '@/lib/useApi';
 import { ROLE_LABEL } from '../labels';
+import { useConfirm, useToast } from '@/components/feedback';
 
 interface UserRow {
   id: string; username: string; displayName: string; status: 'ACTIVE' | 'SUSPENDED'; roles: Role[]; positions: string[]; headOf: string[];
@@ -214,6 +215,8 @@ function EditUser({ user, roles, self, canEditPrivileged, onIssued, onSaved }: {
   user: UserRow; roles: readonly Role[]; self: boolean; canEditPrivileged: boolean;
   onIssued: (i: Issued) => void; onSaved: () => void;
 }) {
+  const ask = useConfirm();
+  const toast = useToast();
   const [resetting, setResetting] = useState(false);
   const [newPassword, setNewPassword] = useState(() => randomPassword());
   const [toBirth, setToBirth] = useState(true);
@@ -230,12 +233,15 @@ function EditUser({ user, roles, self, canEditPrivileged, onIssued, onSaved }: {
     setError('');
     try { await fn(); } catch (e) { setError(errorMessage(e)); } finally { setBusy(null); }
   };
-  const save = () => run('save', async () => { await api.patch('/admin/users/' + user.id, { displayName, ...(isStudent ? {} : { roles: picked }) }); onSaved(); });
-  const toggle = () => run('status', async () => {
-    if (user.status === 'ACTIVE' && !window.confirm(`ระงับบัญชี ${user.displayName}? เจ้าของบัญชีจะออกจากระบบทันที`)) return;
+  const save = () => run('save', async () => { await api.patch('/admin/users/' + user.id, { displayName, ...(isStudent ? {} : { roles: picked }) }); toast.ok(`บันทึกข้อมูลของ ${displayName} แล้ว`); onSaved(); });
+  const toggle = async () => {
+    if (user.status === 'ACTIVE' && !(await ask({ title: `ระงับบัญชี ${user.displayName}?`, message: 'เจ้าของบัญชีจะออกจากระบบทันที และเข้าระบบไม่ได้จนกว่าจะเปิดใช้อีกครั้ง', confirmLabel: 'ระงับบัญชี', tone: 'danger' }))) return;
+    await run('status', async () => {
     await api.patch('/admin/users/' + user.id, { status: user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' });
+    toast.ok(user.status === 'ACTIVE' ? `ระงับบัญชี ${user.displayName} แล้ว` : `เปิดใช้บัญชี ${user.displayName} แล้ว`);
     onSaved();
-  });
+    });
+  };
   const useBirth = isStudent && toBirth;
   const reset = () => run('reset', async () => {
     if (!useBirth) { const p = passwordProblem(newPassword); if (p) throw new Error(p); }

@@ -6,6 +6,9 @@
  * สถานะใช้สีคู่กับข้อความเสมอ
  */
 @theme {
+  /* ตัวเล็กสุดของระบบ 13px (เดิม 12px) — ผู้ใช้หลายคนเป็นครูอาวุโส อ่านบนจอโรงเรียน */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.15rem;
   --font-sans: var(--font-plex), 'IBM Plex Sans Thai', ui-sans-serif, sans-serif;
   --font-form: var(--font-sarabun), 'Sarabun', 'TH SarabunPSK', serif;
 

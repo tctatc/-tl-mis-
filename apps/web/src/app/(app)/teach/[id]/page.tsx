@@ -6,7 +6,7 @@ import {
 } from '@csis/shared';
 import { ArrowLeft, Download, FileUp, Save, Send } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { GradePill } from '@/components/academic';
 import { Dialog } from '@/components/Dialog';
@@ -14,6 +14,7 @@ import { SectionStatus, thaiDate, windowText } from '@/components/grading';
 import { Alert, Button, Card, Spinner, cx } from '@/components/ui';
 import { api, errorMessage, uploadFile } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
+import { useConfirm } from '@/components/feedback';
 
 interface Draft { studentId: string; studentCode: string; name: string; scoreText: string; special: SpecialGrade | '' }
 interface ParseResult { rows: { studentId: string; score: number | null; special: SpecialGrade | null }[]; issues: { rowNo: number; message: string }[]; matched: number; total: number }
@@ -24,6 +25,8 @@ const timeNow = () => new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok
 
 export default function GradeEntryPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const ask = useConfirm();
   const { data, error, reload } = useApi<TeachSectionDetail>(`/teach/sections/${id}`);
   const [rows, setRows] = useState<Draft[]>([]);
   const [saved, setSaved] = useState<Draft[]>([]);
@@ -118,7 +121,10 @@ export default function GradeEntryPage() {
     inputs.current[Math.max(0, Math.min(rows.length - 1, next))]?.select();
   };
   const leave = (e: MouseEvent) => {
-    if (dirty && !window.confirm('ยังไม่ได้บันทึกคะแนน ออกจากหน้านี้เลยไหม? คะแนนที่กรอกจะหายไป')) e.preventDefault();
+    if (!dirty) return;
+    e.preventDefault();
+    void ask({ title: 'ยังไม่ได้บันทึกคะแนน', message: 'ออกจากหน้านี้ตอนนี้ คะแนนที่กรอกไว้จะหายไป', confirmLabel: 'ออกโดยไม่บันทึก', cancelLabel: 'อยู่ต่อ', tone: 'danger' })
+      .then((ok) => { if (ok) router.push('/teach'); });
   };
 
   if (error) return <div className="grid gap-4"><BackLink onClick={leave} /><Alert>{error}</Alert></div>;

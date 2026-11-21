@@ -9,6 +9,7 @@ import { Alert, Button, Card, Input, Spinner, cx } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
 import { Labeled, selectCls } from '../../academic/shared';
+import { useConfirm } from '@/components/feedback';
 
 interface Program { id: string; name: string; level: Level; department: string }
 const groupLabel = (g: Pick<ClassGroupRow, 'level' | 'program' | 'yearLevel' | 'groupNo'>) => `${LEVEL_LABEL[g.level]} ${g.program} ปี ${g.yearLevel} ห้อง ${g.groupNo}`;
@@ -67,6 +68,7 @@ export default function GroupsPage() {
 }
 
 function GroupDialog({ group, onClose, onSaved }: { group: ClassGroupRow; onClose: () => void; onSaved: (msg: string) => void }) {
+  const ask = useConfirm();
   const members = useApi<{ students: { id: string; studentCode: string; name: string; status: string }[] }>(`/admin/registry/groups/${group.id}/students`);
   const [code, setCode] = useState(group.code);
   const [groupNo, setGroupNo] = useState(group.groupNo);
@@ -103,7 +105,7 @@ function GroupDialog({ group, onClose, onSaved }: { group: ClassGroupRow; onClos
         </div>
         <div className="flex flex-wrap justify-between gap-2">
           {group.active
-            ? <Button variant="ghost" loading={busy} onClick={() => { if (window.confirm(`ปิดการใช้งานกลุ่ม ${group.code}? ทำได้เมื่อไม่มีนักเรียนที่กำลังศึกษาแล้ว`)) void save({ active: false }, 'ปิดการใช้งานกลุ่มแล้ว'); }}>ปิดการใช้งานกลุ่มนี้</Button>
+            ? <Button variant="ghost" loading={busy} onClick={() => void ask({ title: `ปิดการใช้งานกลุ่ม ${group.code}?`, message: 'ทำได้เมื่อไม่มีนักเรียนที่กำลังศึกษาในกลุ่มแล้ว เปิดใช้อีกครั้งได้ภายหลัง', confirmLabel: 'ปิดการใช้งาน' }).then((ok) => { if (ok) void save({ active: false }, 'ปิดการใช้งานกลุ่มแล้ว'); })}>ปิดการใช้งานกลุ่มนี้</Button>
             : <Button variant="secondary" loading={busy} onClick={() => void save({ active: true }, 'เปิดใช้งานกลุ่มแล้ว')}>เปิดใช้งานอีกครั้ง</Button>}
           <Button variant="secondary" onClick={onClose}>ปิด</Button>
         </div>

@@ -9,6 +9,7 @@ import { Dialog } from '@/components/Dialog';
 import { Alert, Button, Card, Spinner, cx } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
 import { useApi } from '@/lib/useApi';
+import { useConfirm } from '@/components/feedback';
 
 type Row = ClassGroupRow & { nextYear: number | null; finalYear: number };
 interface Batch { id: string; academicYear: number; at: string; by: string; groups: number; students: number; undoneAt: string | null; undoneBy: string | null }
@@ -17,6 +18,7 @@ interface Batch { id: string; academicYear: number; at: string; by: string; grou
 const finishedYear = () => { const d = new Date(); return d.getFullYear() + 543 - (d.getMonth() < 5 ? 1 : 0); };
 
 export default function PromotionPage() {
+  const ask = useConfirm();
   const list = useApi<Row[]>('/admin/registry/promotion');
   const history = useApi<Batch[]>('/admin/registry/promotion/history');
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -41,7 +43,7 @@ export default function PromotionPage() {
     } catch (e) { setConfirm(false); setMsg({ tone: 'danger', text: errorMessage(e) }); } finally { setBusy(false); }
   }
   async function undo(id: string) {
-    if (!window.confirm('ยกเลิกการเลื่อนชั้นรายการนี้? ชั้นปีของกลุ่มและนักเรียนจะกลับไปเหมือนก่อนเลื่อน')) return;
+    if (!(await ask({ title: 'ยกเลิกการเลื่อนชั้นรายการนี้?', message: 'ชั้นปีของกลุ่มและนักเรียนจะกลับไปเหมือนก่อนเลื่อน', confirmLabel: 'ยกเลิกการเลื่อนชั้น', tone: 'danger' }))) return;
     setBusy(true); setMsg(null);
     try { await api.post(`/admin/registry/promotion/${id}/undo`); setMsg({ tone: 'ok', text: 'ยกเลิกการเลื่อนชั้นแล้ว' }); await Promise.all([list.reload(), history.reload()]); }
     catch (e) { setMsg({ tone: 'danger', text: errorMessage(e) }); } finally { setBusy(false); }

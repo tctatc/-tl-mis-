@@ -1,6 +1,6 @@
 'use client';
 
-import { CircleHelp, KeyRound, LogOut } from 'lucide-react';
+import { BookOpenCheck, CircleHelp, ClipboardCheck, FolderKanban, KeyRound, LayoutDashboard, LogOut, PencilLine, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
@@ -13,6 +13,8 @@ import { MeProvider, homeOf, isAdminUser, isStaffUser, useMe } from '@/lib/me';
 const ACADEMIC = '/admin/academic';
 const REGISTRY = '/admin/registry';
 interface NavLink { href: string; label: string; match?: string[]; except?: string[] }
+/** ไอคอนเมนูหลักของครู/เจ้าหน้าที่ (เมนูนักเรียนใช้แถบล่างบนมือถือ) */
+const NAV_ICON: Record<string, LucideIcon> = { '/admin': LayoutDashboard, [REGISTRY]: FolderKanban, '/staff': ClipboardCheck, [ACADEMIC]: BookOpenCheck, '/teach': PencilLine };
 const STUDENT_LINKS: NavLink[] = [
   { href: '/student', label: 'หน้าหลัก' },
   { href: '/student/plan', label: 'แผนการเรียน' },
@@ -60,8 +62,8 @@ function Shell({ children }: { children: ReactNode }) {
           <nav className="ml-2 hidden items-center gap-0.5 lg:flex" aria-label="เมนูหลัก">
             {links.map((l) => (
               <Link key={l.href} href={l.href} aria-current={active(l) ? 'page' : undefined}
-                className={cx('rounded-md px-2.5 py-2 text-[15px] whitespace-nowrap', active(l) ? 'bg-brand-soft font-medium text-brand' : 'text-ink-muted hover:bg-sunken hover:text-ink')}>
-                {l.label}
+                className={cx('inline-flex items-center gap-1.5 rounded-md px-2.5 py-2 text-[15px] whitespace-nowrap', active(l) ? 'bg-brand-soft font-medium text-brand' : 'text-ink-muted hover:bg-sunken hover:text-ink')}>
+                {(() => { const Icon = NAV_ICON[l.href]; return Icon ? <Icon className="size-4 shrink-0" aria-hidden="true" /> : null; })()}{l.label}
               </Link>
             ))}
           </nav>
@@ -83,7 +85,9 @@ function Shell({ children }: { children: ReactNode }) {
         {links.length > 1 && !me.student && (
           <nav className="flex gap-1 overflow-x-auto px-4 pb-2 lg:hidden" aria-label="เมนูหลัก">
             {links.map((l) => (
-              <Link key={l.href} href={l.href} aria-current={active(l) ? 'page' : undefined} className={cx('rounded-md px-3 py-1.5 text-sm whitespace-nowrap', active(l) ? 'bg-brand-soft text-brand' : 'text-ink-muted')}>{l.label}</Link>
+              <Link key={l.href} href={l.href} aria-current={active(l) ? 'page' : undefined} className={cx('inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-[15px] whitespace-nowrap', active(l) ? 'bg-brand-soft font-medium text-brand' : 'text-ink-muted')}>
+                {(() => { const Icon = NAV_ICON[l.href]; return Icon ? <Icon className="size-4 shrink-0" aria-hidden="true" /> : null; })()}{l.label}
+              </Link>
             ))}
           </nav>
         )}
