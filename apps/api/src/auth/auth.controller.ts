@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { RateLimit } from '../common/rate-limit.js';
 import type { Request, Response } from 'express';
 import { passwordProblem } from '@csis/shared';
 import { z } from 'zod';
@@ -24,7 +24,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @RateLimit(10, 60_000)
   @Post('login')
   @HttpCode(200)
   async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -50,7 +50,7 @@ export class AuthController {
   }
 
   @AllowPendingPassword()
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @RateLimit(10, 60_000)
   @Post('change-password')
   @HttpCode(200)
   async changePassword(@CurrentUser() user: AuthUser, @Body() body: unknown, @Req() req: Request) {

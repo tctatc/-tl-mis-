@@ -1,6 +1,5 @@
 import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { StudentAcademicController } from './academic/student-academic.controller.js';
 import { StudentAcademicService } from './academic/student-academic.service.js';
 import { AdminController } from './admin/admin.controller.js';
@@ -19,13 +18,13 @@ import { AuthService } from './auth/auth.service.js';
 import { SessionGuard } from './auth/session.guard.js';
 import { AuditService } from './common/audit.service.js';
 import { CsrfMiddleware } from './common/csrf.middleware.js';
+import { RateLimitGuard } from './common/rate-limit.js';
 import { PrismaService } from './common/prisma.service.js';
 import { HealthController } from './health.controller.js';
 import { RequestsController } from './requests/requests.controller.js';
 import { RequestsService } from './requests/requests.service.js';
 
 @Module({
-  imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }])],
   controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController],
   providers: [
     PrismaService,
@@ -39,7 +38,7 @@ import { RequestsService } from './requests/requests.service.js';
     StudentImportService,
     AcademicImportService,
     AcademicAdminService,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: SessionGuard },
   ],
 })
