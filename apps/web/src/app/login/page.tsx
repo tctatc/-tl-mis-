@@ -117,7 +117,7 @@ function LoginForm() {
               <Button type="submit" loading={busy} icon={<LogIn className="size-4" aria-hidden="true" />} className="mt-1 w-full">เข้าสู่ระบบ</Button>
             </form>
           </Card>
-          <p className="mt-5 text-center text-sm text-ink-muted">ลืมรหัสผ่าน ติดต่องานทะเบียนพร้อมบัตรนักศึกษา</p>
+          <p className="mt-5 text-center text-sm text-ink-muted">ลืมรหัสผ่าน ติดต่องานทะเบียนพร้อมบัตรนักศึกษา · <a href="/help" className="text-brand underline underline-offset-2">คู่มือการใช้งาน</a></p>
         </div>
       </div>
     </main>

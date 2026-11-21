@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, CalendarDays, ClipboardList, FileText, GraduationCap, House, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { BookOpen, CalendarDays, CircleHelp, ClipboardList, FileText, GraduationCap, House, LogOut, Menu, UserRound, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +17,7 @@ const MORE = [
   { href: '/student/plan', label: 'แผนการเรียน', Icon: BookOpen },
   { href: '/student/registration', label: 'บัตรลงทะเบียน', Icon: ClipboardList },
   { href: '/student/profile', label: 'ข้อมูลประวัติ', Icon: UserRound },
+  { href: '/help?for=student', label: 'คู่มือการใช้งาน', Icon: CircleHelp },
 ] as const;
 
 /** แถบเมนูล่างแบบแอปมือถือ (จอเล็กกว่า lg) — 4 เมนูหลัก + "เพิ่มเติม" เปิดแผ่นเมนูจากด้านล่าง */

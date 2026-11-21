@@ -1,6 +1,6 @@
 'use client';
 
-import { KeyRound, LogOut } from 'lucide-react';
+import { CircleHelp, KeyRound, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
@@ -67,6 +67,10 @@ function Shell({ children }: { children: ReactNode }) {
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <InstallApp className="hidden lg:block" />
+            <Link href={`/help?for=${me.student ? 'student' : isAdminUser(me) ? 'admin' : me.roles.some((r) => r === 'TEACHER' || r === 'ADVISOR') && !me.roles.some((r) => r === 'REGISTRAR' || r === 'ASSESSMENT_STAFF' || r === 'CURRICULUM_STAFF') ? 'teacher' : 'staff'}`}
+              title="คู่มือการใช้งาน" className={cx(me.student ? 'hidden lg:inline-flex' : 'inline-flex', 'min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-ink-muted hover:bg-sunken hover:text-ink')}>
+              <CircleHelp className="size-4" aria-hidden="true" /> <span className={crowded ? 'sr-only 2xl:not-sr-only' : 'sr-only sm:not-sr-only'}>คู่มือ</span>
+            </Link>
             <span className={cx('hidden max-w-[12rem] truncate text-sm text-ink-muted', me.student || crowded ? '2xl:block' : 'xl:block')}>{me.displayName}</span>
             {!me.student && <Link href="/change-password" title="เปลี่ยนรหัสผ่าน" className={cx('inline-flex', 'min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-ink-muted hover:bg-sunken hover:text-ink')}>
               <KeyRound className="size-4" aria-hidden="true" /> <span className={crowded ? 'sr-only 2xl:not-sr-only' : 'sr-only sm:not-sr-only'}>เปลี่ยนรหัสผ่าน</span>
