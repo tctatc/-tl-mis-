@@ -1,11 +1,10 @@
 'use client';
 
-import { ArrowLeft, BookOpen, Lightbulb, Search, X } from 'lucide-react';
-import Link from 'next/link';
+import { BookOpen, Lightbulb, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Brand } from '@/components/Brand';
 import { cx } from '@/components/ui';
 import { AUDIENCES, TOPICS, type Audience, type Topic } from './content';
+import { HelpNav } from './HelpNav';
 
 const SIZE: Record<string, [number, number]> = { 'staff-dashboard': [1280, 560], 'users-create': [512, 646] };
 const dims = (img: string, mobile?: boolean): [number, number] => SIZE[img] ?? (mobile ? [390, 780] : [1280, 760]);
@@ -29,12 +28,7 @@ export default function HelpPage() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 border-b border-line/80 bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <Link href="/" className="shrink-0 rounded-md" aria-label="กลับหน้าแรก"><Brand compact /></Link>
-          <Link href="/" className="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-[15px] text-ink-muted hover:bg-sunken hover:text-ink"><ArrowLeft className="size-4" aria-hidden="true" />กลับเข้าระบบ</Link>
-        </div>
-      </header>
+      <HelpNav />
 
       <main id="main" className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 sm:py-8">
         <div>

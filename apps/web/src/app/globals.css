@@ -140,3 +140,17 @@ select:not([multiple]):disabled { opacity: 0.6; }
 /* ชื่อนักศึกษาที่ลงชื่อออนไลน์: ลายมือ หมึกน้ำเงิน ไม่ย่อ (ถ้ายาวให้ล้นเส้นได้เหมือนเขียนจริง) */
 .sheet-fill.sheet-sign { font-family: var(--font-sign), var(--font-form); font-size: 1.2em; line-height: 1; overflow: visible; color: #0b2a8a; }
 @media print { .sheet-fill.sheet-sign { color: #0b2a8a !important; } }
+
+/* แผ่น A4 ของโปสเตอร์คู่มือและแผ่น QR — ใช้ฟอนต์ของระบบ (ไม่ใช่ฟอนต์แบบฟอร์มราชการ) */
+.a4 {
+  position: relative;
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  background: #fff;
+  color: var(--color-ink);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+@media print { .a4 { box-shadow: none !important; } }

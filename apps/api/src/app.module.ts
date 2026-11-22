@@ -26,11 +26,12 @@ import { DashboardService } from './dashboard/dashboard.service.js';
 import { StaffController } from './staff/staff.controller.js';
 import { StaffService } from './staff/staff.service.js';
 import { HealthController } from './health.controller.js';
+import { PublicController } from './public/public.controller.js';
 import { RequestsController } from './requests/requests.controller.js';
 import { RequestsService } from './requests/requests.service.js';
 
 @Module({
-  controllers: [HealthController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController, StaffController, ImportHistoryController],
+  controllers: [HealthController, PublicController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController, StaffController, ImportHistoryController],
   providers: [
     PrismaService,
     AuditService,

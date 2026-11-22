@@ -10,11 +10,11 @@ const sarabun = Sarabun({ subsets: ['thai', 'latin'], weight: ['400', '700'], va
 const charm = Charm({ subsets: ['thai', 'latin'], weight: ['400'], variable: '--font-sign', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: { default: 'ระบบทะเบียนออนไลน์', template: '%s · ระบบทะเบียนออนไลน์' },
-  description: 'ระบบทะเบียนและบริการนักเรียน–นักศึกษา วิทยาลัยเทคนิคท่าหลวงซิเมนต์ไทยอนุสรณ์',
+  title: { default: 'TLMis ระบบบริการนักเรียน นักศึกษา', template: '%s · TLMis' },
+  description: 'TLMis ระบบบริการนักเรียน นักศึกษา วิทยาลัยเทคนิคท่าหลวงซิเมนต์ไทยอนุสรณ์ — ยื่นคำร้อง ผลการเรียน ตารางเรียน',
   robots: { index: false, follow: false },
-  applicationName: 'ทะเบียน ทล.',
-  appleWebApp: { capable: true, title: 'ทะเบียน ทล.', statusBarStyle: 'default' },
+  applicationName: 'TLMis',
+  appleWebApp: { capable: true, title: 'TLMis', statusBarStyle: 'default' },
   icons: { icon: '/icon-192.png', apple: '/apple-touch-icon.png' },
   formatDetection: { telephone: false },
 };

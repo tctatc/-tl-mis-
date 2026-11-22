@@ -4,6 +4,7 @@ import { CATEGORIES, LEVEL_LABEL, VISIBLE_REQUEST_TYPES, fullName, type Category
 import { FileText, Inbox } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { FormQrButton } from '@/components/Qr';
 import { RequestList } from '@/components/RequestList';
 import { Alert, Card, Spinner } from '@/components/ui';
 import { api, errorMessage } from '@/lib/api';
@@ -58,7 +59,7 @@ export default function StudentHome() {
       <section aria-labelledby="new-title" className="grid gap-5">
         <div>
           <h2 id="new-title" className="text-xl font-semibold">ยื่นคำร้องใหม่</h2>
-          <p className="text-[15px] text-ink-muted">กดเรื่องที่ต้องการ ชื่อ รหัส แผนก สาขา และชื่อผู้ปกครองถูกกรอกให้จากทะเบียนแล้ว</p>
+          <p className="text-[15px] text-ink-muted">กดเรื่องที่ต้องการ ชื่อ รหัส แผนก สาขา และชื่อผู้ปกครองถูกกรอกให้จากทะเบียนแล้ว · กดไอคอน QR เพื่อสแกนไปกรอกต่อบนมือถือ</p>
         </div>
         {(Object.keys(CATEGORIES) as CategoryCode[]).filter((cat) => VISIBLE_REQUEST_TYPES.some((t) => t.category === cat)).map((cat) => (
           <div key={cat} className="grid gap-2.5">
@@ -71,14 +72,16 @@ export default function StudentHome() {
               {VISIBLE_REQUEST_TYPES.filter((t) => t.category === cat).map((t) => (
                 <li key={t.code}>
                   {t.ready ? (
-                    <Link href={`/student/new/${t.code}`} className="group flex h-full items-start gap-3 rounded-[var(--radius-card)] bg-surface p-3.5 shadow-card ring-1 ring-line/70 transition-[box-shadow,transform] duration-150 hover:ring-brand-border active:scale-[0.98]">
+                    // ลิงก์กับปุ่ม QR เป็นพี่น้องกัน (ห้ามซ้อนปุ่มในลิงก์)
+                    <div className="group relative flex h-full items-start gap-3 rounded-[var(--radius-card)] bg-surface p-3.5 pr-2 shadow-card ring-1 ring-line/70 transition-[box-shadow] duration-150 hover:ring-brand-border">
                       <FileText className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
-                      <span className="grid">
+                      <Link href={`/student/new/${t.code}`} className="grid min-w-0 flex-1 after:absolute after:inset-0 after:rounded-[var(--radius-card)] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-brand">
                         <span className="font-medium group-hover:text-brand">{t.name}</span>
                         <span className="text-sm text-ink-muted">{t.hint}</span>
-                      </span>
-                      <span className="ml-auto text-xs tabular-nums text-ink-muted">{t.code}</span>
-                    </Link>
+                        <span className="mt-1 text-xs tabular-nums text-ink-muted">{t.code}</span>
+                      </Link>
+                      <span className="relative z-10 -my-1.5"><FormQrButton code={t.code} name={t.name} /></span>
+                    </div>
                   ) : (
                     <div className="flex h-full items-start gap-3 rounded-[var(--radius-card)] border border-dashed border-line-strong p-3.5 text-ink-muted" aria-disabled="true">
                       <FileText className="mt-0.5 size-5 shrink-0" aria-hidden="true" />

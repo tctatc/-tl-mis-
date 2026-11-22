@@ -5,7 +5,7 @@
  *  - ไม่แตะ /api เด็ดขาด: ผลการเรียน เลขบัตร คำร้อง ไม่ถูกเก็บในเครื่อง (PDPA)
  *    หน้าเว็บที่เก็บเป็นแค่โครงหน้า ข้อมูลส่วนตัวโหลดผ่าน /api ทุกครั้ง
  */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const PAGES = `csis-pages-${VERSION}`;
 const STATIC = `csis-static-${VERSION}`;
 const KEEP = [PAGES, STATIC];

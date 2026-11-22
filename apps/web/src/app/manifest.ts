@@ -4,8 +4,8 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'ระบบทะเบียนออนไลน์ วท.ท่าหลวงซิเมนต์ไทยอนุสรณ์',
-    short_name: 'ทะเบียน ทล.',
+    name: 'TLMis ระบบบริการนักเรียน นักศึกษา วท.ท่าหลวงซิเมนต์ไทยอนุสรณ์',
+    short_name: 'TLMis',
     description: 'ตารางเรียน ผลการเรียน บัตรลงทะเบียน และยื่นคำร้องออนไลน์',
     lang: 'th',
     start_url: '/',

@@ -95,7 +95,7 @@ export function RegistrationSheet({ card, student }: { card: RegistrationCardVie
 
       <p className="absolute text-[9.5pt] text-black/70" style={{ left: '16mm', right: '16mm', bottom: '10mm' }}>
         ลงทะเบียนเมื่อ {reg ? `${reg.day} ${THAI_MONTHS[reg.month - 1]} ${toBuddhistYear(reg.year)}` : '–'} ·
-        พิมพ์จากระบบทะเบียนออนไลน์ {printed.day} {THAI_MONTHS[printed.month - 1]} {toBuddhistYear(printed.year)}
+        พิมพ์จากระบบ TLMis {printed.day} {THAI_MONTHS[printed.month - 1]} {toBuddhistYear(printed.year)}
       </p>
     </article>
   );

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { FormFields } from '@/components/FormFields';
+import { FormQrButton } from '@/components/Qr';
 import { FixedPreview, PreviewFrame } from '@/components/PreviewFrame';
 import { Alert, Button, Card, Field, Input, Spinner, cx } from '@/components/ui';
 import { ApiError, api, errorMessage } from '@/lib/api';
@@ -150,7 +151,11 @@ function NewRequestForm() {
             <Link href="/student/requests" className="inline-flex min-h-11 items-center gap-1.5 text-[15px] text-ink-muted hover:text-ink">
               <ArrowLeft className="size-4" aria-hidden="true" /> กลับหน้าคำร้อง
             </Link>
-            <h1 className="mt-1 text-2xl font-semibold">{editId ? 'แก้ไขคำร้อง' : type.name}</h1>
+            <div className="mt-1 flex items-start justify-between gap-3">
+              <h1 className="text-2xl font-semibold">{editId ? 'แก้ไขคำร้อง' : type.name}</h1>
+              {/* บนคอม: สแกนไปกรอกต่อบนมือถือ (บนมือถืออยู่แล้วไม่ต้องมี) */}
+              {!editId && <span className="hidden shrink-0 lg:block"><FormQrButton code={type.code} name={type.name} variant="text" /></span>}
+            </div>
             <p className="text-[15px] text-ink-muted">{isGeneral ? 'แบบคำร้องทั่วไป' : 'แบบฟอร์มของวิทยาลัย'} · รหัส {type.code} · แบบฟอร์มด้านขวาเปลี่ยนตามที่กรอกทันที</p>
           </div>
 
