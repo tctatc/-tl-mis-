@@ -7,7 +7,7 @@ import { clientIp } from '../common/request-ip.js';
 import { parseOr400 } from '../common/zod.js';
 import { AuthService } from './auth.service.js';
 import { AllowPendingPassword, CurrentUser, Public, type AuthUser } from './decorators.js';
-import { SESSION_COOKIE, cookieOptions } from './session.js';
+import { SESSION_COOKIE, cookieOptions, legacyCookieOptions } from './session.js';
 
 const loginSchema = z.object({
   username: z.string().trim().min(1, 'กรอกชื่อผู้ใช้').max(64),
@@ -30,6 +30,7 @@ export class AuthController {
   async login(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { username, password } = parseOr400(loginSchema, body);
     const { token, expiresAt } = await this.auth.login(username, password, clientIp(req), req.get('user-agent') ?? '');
+    if (req.get('origin')?.startsWith('https://')) res.clearCookie(SESSION_COOKIE, legacyCookieOptions(req.get('origin')));
     res.cookie(SESSION_COOKIE, token, cookieOptions(expiresAt.getTime() - Date.now(), req.get('origin')));
     return { ok: true };
   }
@@ -40,6 +41,7 @@ export class AuthController {
   async logout(@CurrentUser() user: AuthUser, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout(user.sessionId);
     res.clearCookie(SESSION_COOKIE, cookieOptions(undefined, req.get('origin')));
+    if (req.get('origin')?.startsWith('https://')) res.clearCookie(SESSION_COOKIE, legacyCookieOptions(req.get('origin')));
     return { ok: true };
   }
 

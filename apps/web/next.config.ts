@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 
 const API = process.env.API_ORIGIN ?? 'http://127.0.0.1:4010';
 const PROD = process.env.NODE_ENV === 'production';
+/** เว็บที่ฝังระบบนี้ใน iframe ได้ — ค่าเริ่มต้นเปิดให้ทุกเว็บ https (คุกกี้แยกพาร์ทิชัน จึงไม่เห็นเซสชันที่ล็อกอินไว้)
+ *  จำกัดเฉพาะเว็บวิทยาลัยได้ เช่น FRAME_ANCESTORS="'self' https://www.example.ac.th" */
+const FRAME_ANCESTORS = process.env.FRAME_ANCESTORS?.trim() || "'self' https:";
 
 /** CSP: ทุกอย่างมาจากเว็บเราเอง (ฟอนต์ self-host ผ่าน next/font) — โหมดพัฒนาต้องใช้ eval จึงใส่เฉพาะ production */
 const CSP = [
@@ -13,7 +16,7 @@ const CSP = [
   "connect-src 'self'",
   "worker-src 'self'",
   "manifest-src 'self'",
-  "frame-ancestors 'none'",
+  `frame-ancestors ${FRAME_ANCESTORS}`,
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
@@ -32,7 +35,6 @@ const config: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'same-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
