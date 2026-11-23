@@ -4,7 +4,8 @@ const API = process.env.API_ORIGIN ?? 'http://127.0.0.1:4010';
 const PROD = process.env.NODE_ENV === 'production';
 /** เว็บที่ฝังระบบนี้ใน iframe ได้ — ค่าเริ่มต้นเปิดให้ทุกเว็บ https (คุกกี้แยกพาร์ทิชัน จึงไม่เห็นเซสชันที่ล็อกอินไว้)
  *  จำกัดเฉพาะเว็บวิทยาลัยได้ เช่น FRAME_ANCESTORS="'self' https://www.example.ac.th" */
-const FRAME_ANCESTORS = process.env.FRAME_ANCESTORS?.trim() || "'self' https:";
+// localhost:5000 = จอหุ่น (Pi) ของวิทยาลัยที่เปิด TLMis ซ้อนในหน้าของตัวเองผ่าน http://localhost
+const FRAME_ANCESTORS = process.env.FRAME_ANCESTORS?.trim() || "'self' https: http://localhost:5000 http://127.0.0.1:5000";
 
 /** CSP: ทุกอย่างมาจากเว็บเราเอง (ฟอนต์ self-host ผ่าน next/font) — โหมดพัฒนาต้องใช้ eval จึงใส่เฉพาะ production */
 const CSP = [
