@@ -56,7 +56,7 @@ export function Field({ label, hint, error, children, counter }: { label: string
 
 const control = 'w-full rounded-[var(--radius-control)] bg-surface px-3.5 text-base ring-1 ring-line-strong transition-[box-shadow] duration-150 placeholder:text-ink-muted/70 focus:outline-none focus:ring-2 focus:ring-brand aria-[invalid=true]:ring-danger';
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
+export function Input(props: InputHTMLAttributes<HTMLInputElement> & { ref?: React.Ref<HTMLInputElement> }) {
   return <input {...props} className={cx(control, 'min-h-11', props.className)} />;
 }
 

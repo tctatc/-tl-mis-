@@ -1,12 +1,14 @@
 'use client';
 
-import { THAI_MONTHS_SHORT, toBuddhistYear, type Me, type PublicOverview } from '@csis/shared';
-import { BookOpen, CalendarDays, ChevronRight, Clock3, Eye, EyeOff, FileText, GraduationCap, LogIn, QrCode, Smartphone, type LucideIcon } from 'lucide-react';
+import { THAI_MONTHS_SHORT, parseStudentQr, toBuddhistYear, type Me, type PublicOverview } from '@csis/shared';
+import { BookOpen, CalendarDays, ChevronRight, Clock3, Eye, EyeOff, FileText, GraduationCap, IdCard, LogIn, QrCode, ScanLine, Smartphone, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Brand } from '@/components/Brand';
 import { BarList, ColumnChart } from '@/components/charts';
+import { Dialog } from '@/components/Dialog';
+import { QrScanner } from '@/components/StudentScan';
 import { Alert, Button, Field, Input, cx } from '@/components/ui';
 import { ApiError, api } from '@/lib/api';
 import { homeOf } from '@/lib/me';
@@ -31,7 +33,7 @@ const monthLabel = (key: string) => {
   return `${THAI_MONTHS_SHORT[m! - 1]} ${String(toBuddhistYear(y!)).slice(2)}`;
 };
 
-function LoginCard() {
+function LoginCard({ scanned }: { scanned: { code: string; at: number } | null }) {
   const router = useRouter();
   const params = useSearchParams();
   const [username, setUsername] = useState('');
@@ -43,6 +45,15 @@ function LoginCard() {
   const next = params.get('next');
   // รับเฉพาะ path ภายในเว็บ กัน open redirect
   const safeNext = next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : null;
+  const passwordRef = useRef<HTMLInputElement>(null);
+  // สแกนบัตรนักศึกษาจากแบนเนอร์ → ใส่รหัสให้ แล้วไปช่องรหัสผ่านต่อ (ยังต้องกรอกรหัสผ่านเสมอ)
+  useEffect(() => {
+    if (!scanned) return;
+    setUsername(scanned.code); setFields({}); setError('');
+    // รอกล่องสแกนปิดก่อน (<dialog> คืน focus ให้ปุ่มที่เปิดมันเอง) แล้วค่อยไปช่องรหัสผ่าน
+    const t = setTimeout(() => passwordRef.current?.focus(), 60);
+    return () => clearTimeout(t);
+  }, [scanned]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -67,7 +78,10 @@ function LoginCard() {
       <h2 className="text-[22px] font-semibold">เข้าสู่ระบบ</h2>
       {safeNext?.startsWith('/student/new/')
         ? <p className="mt-1 text-[15px] text-ink-muted">เข้าสู่ระบบแล้วระบบจะพาไปที่แบบฟอร์มคำร้องที่สแกนมาทันที</p>
+        : safeNext?.startsWith('/scan')
+        ? <p className="mt-1 text-[15px] text-ink-muted">เข้าสู่ระบบด้วยบัญชีครูหรือเจ้าหน้าที่ แล้วระบบจะพาไปดูข้อมูลนักเรียนที่สแกนทันที</p>
         : <p className="mt-1 text-[15px] text-ink-muted">นักศึกษาใช้รหัสนักศึกษา ครูและเจ้าหน้าที่ใช้บัญชีที่ได้รับจากวิทยาลัย</p>}
+      {scanned && username === scanned.code && <div className="mt-4"><Alert tone="ok">สแกนบัตรแล้ว รหัส {scanned.code} กรอกรหัสผ่านแล้วกดเข้าสู่ระบบ</Alert></div>}
       <form onSubmit={submit} className="mt-6 grid gap-4" noValidate>
         <Field label="ชื่อผู้ใช้ / รหัสนักศึกษา" error={fields.username}>
           {({ id, describedBy, invalid }) => (
@@ -77,7 +91,7 @@ function LoginCard() {
         <Field label="รหัสผ่าน" hint="นักศึกษาครั้งแรก: วันเดือนปีเกิด (พ.ศ.) เช่น 01/11/2551" error={fields.password}>
           {({ id, describedBy, invalid }) => (
             <div className="relative">
-              <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required className="pr-12" />
+              <Input ref={passwordRef} id={id} aria-describedby={describedBy} aria-invalid={invalid} type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required className="pr-12" />
               <button type="button" onClick={() => setShow((v) => !v)} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-ink-muted hover:text-ink" aria-label={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}>
                 {show ? <EyeOff className="size-5" aria-hidden="true" /> : <Eye className="size-5" aria-hidden="true" />}
               </button>
@@ -89,6 +103,52 @@ function LoginCard() {
       </form>
       <p className="mt-5 border-t border-line pt-4 text-sm text-ink-muted">ลืมรหัสผ่าน ติดต่องานทะเบียนพร้อมบัตรนักศึกษา</p>
     </div>
+  );
+}
+
+/* ---------------- แบนเนอร์สแกน QR บัตรนักศึกษา ---------------- */
+
+/**
+ * นักเรียน: สแกน QR บัตรนักศึกษาแทนการพิมพ์รหัส (ยังต้องกรอกรหัสผ่าน — QR มีแค่รหัส ใครก็ถ่ายรูปไปได้ จึงใช้แทนรหัสผ่านไม่ได้)
+ * ครู/เจ้าหน้าที่: ไปหน้าสแกนดูข้อมูลนักเรียน (ยังไม่ล็อกอินจะถูกพาเข้าสู่ระบบก่อน)
+ */
+function ScanBanner({ onCode }: { onCode: (code: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const close = () => { setOpen(false); setErr(''); };
+  return (
+    <section aria-labelledby="scan-banner" className="rise mt-4 rounded-[18px] bg-white/[0.07] p-4 text-white ring-1 ring-gold/45 sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-[var(--radius-control)] bg-gold text-brand-deep"><ScanLine className="size-6" aria-hidden="true" /></span>
+        <div className="min-w-0">
+          <h2 id="scan-banner" className="text-[17px] font-semibold">สแกน QR บัตรนักเรียน นักศึกษา</h2>
+          <p className="mt-0.5 text-[15px] text-white/75"><span className="inline-block">ไม่ต้องพิมพ์รหัสนักศึกษา</span> <span className="inline-block">สแกนบัตรแล้วกรอกรหัสผ่าน</span><span className="inline-block">เข้าใช้งานได้เลย</span></p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2">
+        <button type="button" onClick={() => { setOpen(true); setAttempt((a) => a + 1); }}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] bg-gold px-4 text-[16px] font-semibold text-brand-deep transition-transform hover:brightness-105 active:scale-[0.97]">
+          <IdCard className="size-5" aria-hidden="true" />สแกนบัตรเข้าสู่ระบบ
+        </button>
+        <Link href="/scan" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] px-4 text-[15px] font-medium text-white ring-1 ring-white/35 hover:bg-white/10">
+          <ScanLine className="size-5" aria-hidden="true" />ครู: สแกนดูข้อมูลนักเรียน
+        </Link>
+      </div>
+      <Dialog open={open} onClose={close} title="สแกนบัตรนักศึกษาเพื่อเข้าสู่ระบบ">
+        {open && (
+          <div className="grid gap-3">
+            <p className="text-[16px] text-ink-muted">ส่อง QR บนบัตรนักศึกษา หรือ QR ที่บันทึกไว้ในมือถือ ให้อยู่ในกรอบ</p>
+            {err && <Alert>{err}</Alert>}
+            <QrScanner key={attempt} active onText={(text) => {
+              const code = parseStudentQr(text);
+              if (!code) { setErr('QR นี้ไม่ใช่บัตรนักศึกษา ลองสแกน QR บนบัตรนักศึกษาอีกครั้ง'); setAttempt((a) => a + 1); return; }
+              close(); onCode(code);
+            }} />
+          </div>
+        )}
+      </Dialog>
+    </section>
   );
 }
 
@@ -192,6 +252,7 @@ function Shortcuts() {
 /* ---------------- หน้า ---------------- */
 
 function LandingPage() {
+  const [scanned, setScanned] = useState<{ code: string; at: number } | null>(null);
   return (
     <div className="flex min-h-dvh flex-col">
       {/* แถบแดงเข้มด้านบน: ตรา + ชื่อระบบ + ช่องเข้าสู่ระบบ */}
@@ -227,7 +288,8 @@ function LandingPage() {
             <p className="mt-7 flex items-center gap-2 text-sm text-white/70"><Smartphone className="size-4 shrink-0" aria-hidden="true" />ใช้บนมือถือได้ และเพิ่มไว้ที่หน้าจอโฮมเหมือนแอป</p>
           </div>
           <div className="order-1 mx-auto w-full max-w-[440px] lg:order-2">
-            <Suspense><LoginCard /></Suspense>
+            <Suspense><LoginCard scanned={scanned} /></Suspense>
+            <ScanBanner onCode={(code) => setScanned({ code, at: Date.now() })} />
           </div>
         </div>
       </div>
