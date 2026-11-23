@@ -11,3 +11,4 @@ export * from './academicImport.js';
 export * from './grading.js';
 export * from './groups.js';
 export * from './publicOverview.js';
+export * from './scan.js';

@@ -45,8 +45,8 @@ function StudentsAdmin() {
     if (file && !importing) setImporting({ file });
   };
 
-  const [q, setQ] = useState('');
-  const [query, setQuery] = useState('');
+  const [q, setQ] = useState(params0.get('q') ?? '');
+  const [query, setQuery] = useState(params0.get('q') ?? '');
   // ตัวกรองเริ่มต้นมาจากลิงก์ในแดชบอร์ด เช่น ?level=pvc&yearLevel=2&status=studying
   const [programId, setProgramId] = useState(params0.get('programId') ?? '');
   const [status, setStatus] = useState(params0.get('status') ?? '');

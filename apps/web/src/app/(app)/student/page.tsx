@@ -8,6 +8,7 @@ import { BookOpen, CalendarDays, ClipboardList, FileText, GraduationCap, UserRou
 import Link from 'next/link';
 import { Stat } from '@/components/academic';
 import { RequestList } from '@/components/RequestList';
+import { StudentQrButton } from '@/components/StudentScan';
 import { Card } from '@/components/ui';
 import { useMe } from '@/lib/me';
 import { useApi } from '@/lib/useApi';
@@ -46,6 +47,7 @@ export default function StudentDashboard() {
         <p className="text-sm text-ink-muted">สวัสดี</p>
         <h1 className="text-2xl font-semibold sm:text-[28px]">{fullName(s)}</h1>
         <p className="mt-1 text-[15px] text-ink-muted"><span className="tabular-nums">{s.studentCode}</span> · {LEVEL_LABEL[s.level]} {s.program} ปี {s.yearLevel} กลุ่ม {s.groupNo} · {s.department}</p>
+        <StudentQrButton code={s.studentCode} name={fullName(s)} className="mt-3" />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="สรุป">

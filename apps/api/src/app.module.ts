@@ -29,9 +29,10 @@ import { HealthController } from './health.controller.js';
 import { PublicController } from './public/public.controller.js';
 import { RequestsController } from './requests/requests.controller.js';
 import { RequestsService } from './requests/requests.service.js';
+import { ScanController, ScanService } from './scan/scan.controller.js';
 
 @Module({
-  controllers: [HealthController, PublicController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController, StaffController, ImportHistoryController],
+  controllers: [HealthController, PublicController, AuthController, RequestsController, StudentAcademicController, AdminController, ImportsController, AcademicAdminController, TeachController, GradingAdminController, RegistryController, DashboardController, StaffController, ImportHistoryController, ScanController],
   providers: [
     PrismaService,
     AuditService,
@@ -46,6 +47,7 @@ import { RequestsService } from './requests/requests.service.js';
     AcademicAdminService,
     DashboardService,
     StaffService,
+    ScanService,
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: SessionGuard },
   ],

@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpenCheck, CircleHelp, ClipboardCheck, FolderKanban, KeyRound, LayoutDashboard, LogOut, PencilLine, type LucideIcon } from 'lucide-react';
+import { BookOpenCheck, CircleHelp, ClipboardCheck, FolderKanban, KeyRound, LayoutDashboard, LogOut, PencilLine, ScanLine, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
@@ -14,7 +14,7 @@ const ACADEMIC = '/admin/academic';
 const REGISTRY = '/admin/registry';
 interface NavLink { href: string; label: string; match?: string[]; except?: string[] }
 /** ไอคอนเมนูหลักของครู/เจ้าหน้าที่ (เมนูนักเรียนใช้แถบล่างบนมือถือ) */
-const NAV_ICON: Record<string, LucideIcon> = { '/admin': LayoutDashboard, [REGISTRY]: FolderKanban, '/staff': ClipboardCheck, [ACADEMIC]: BookOpenCheck, '/teach': PencilLine };
+const NAV_ICON: Record<string, LucideIcon> = { '/admin': LayoutDashboard, [REGISTRY]: FolderKanban, '/staff': ClipboardCheck, [ACADEMIC]: BookOpenCheck, '/teach': PencilLine, '/scan': ScanLine };
 const STUDENT_LINKS: NavLink[] = [
   { href: '/student', label: 'หน้าหลัก' },
   { href: '/student/plan', label: 'แผนการเรียน' },
@@ -48,6 +48,8 @@ function Shell({ children }: { children: ReactNode }) {
     ...(isAdminUser(me) || me.roles.some((r) => r === 'REGISTRAR' || r === 'ASSESSMENT_STAFF') ? [{ href: ACADEMIC, label: 'การเรียนและเกรด' }] : []),
     // ครูผู้สอน: กรอกเกรดวิชาที่ตัวเองสอน
     ...(me.roles.some((r) => r === 'TEACHER' || r === 'ADVISOR') ? [{ href: '/teach', label: 'กรอกเกรด' }] : []),
+    // ครู/เจ้าหน้าที่ทุกคน: สแกน QR บัตรนักศึกษา
+    ...(isStaffUser(me) ? [{ href: '/scan', label: 'สแกน QR' }] : []),
   ];
   // เมนูเยอะ (ผู้ดูแลที่มีหลายบทบาท) → ซ่อนชื่อ/คำบนปุ่มขวาจนจอกว้างพอ ไม่ให้ตัดบรรทัด
   const crowded = links.length > 3;

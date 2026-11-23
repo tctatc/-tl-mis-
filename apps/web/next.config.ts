@@ -37,7 +37,7 @@ const config: NextConfig = {
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'same-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
           ...(PROD ? [
             { key: 'Content-Security-Policy', value: CSP },
             // เบราว์เซอร์ใช้ HSTS เฉพาะเมื่อเปิดผ่าน https (http://localhost ไม่ได้รับผล)
